@@ -1,0 +1,279 @@
+import { useState, useEffect } from 'react';
+import { Lock } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
+import { Modal } from '../components/ui/Modal';
+import { Tabs } from '../components/ui/Tabs';
+import { useFeedbacksStore } from '../store/feedbacksStore';
+import { SkeletonCard } from '../components/ui/SkeletonCard';
+import { Avatar } from '../components/Avatar';
+
+const colaboradores = ['Maria Santos', 'Carlos Lima', 'João Silva', 'Ana Costa'];
+
+export function Feedbacks() {
+  const [activeTab, setActiveTab] = useState('recebidos');
+  const [detalhesId, setDetalhesId] = useState<string | null>(null);
+  // removed isSolicitarModal state (not used)
+  const [formData, setFormData] = useState({
+    paraQuem: '',
+    tipo: 'geral',
+    pergunta: '',
+    anonimo: false
+  });
+  const [touched, setTouched] = useState({ paraQuem: false, pergunta: false });
+
+  const { feedbacks, solicitarFeedback } = useFeedbacksStore();
+
+  const tabs = [
+    { id: 'recebidos', label: 'Recebidos', count: feedbacks.length },
+    { id: 'enviados', label: 'Enviados', count: 0 },
+    { id: 'solicitar', label: 'Solicitar' }
+  ];
+
+  const handleSolicitar = () => {
+    const errors: string[] = [];
+    setTouched({ paraQuem: true, pergunta: true });
+    if (!formData.paraQuem) errors.push('Selecione um colaborador.');
+    if (!formData.pergunta) errors.push('A pergunta é obrigatória.');
+
+    if (errors.length) {
+      setFormErrors(errors);
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    solicitarFeedback(formData.paraQuem, formData.tipo, formData.pergunta, formData.anonimo);
+    toast.success('Feedback solicitado com sucesso!');
+    setFormData({ paraQuem: '', tipo: 'geral', pergunta: '', anonimo: false });
+  };
+
+  const renderStars = (nota?: number) => {
+    if (!nota) return null;
+    return (
+      <div className="flex items-center gap-1">
+        {[...Array(5)].map((_, i) => (
+          <span
+            key={i}
+            className={`text-lg ${i < Math.round(nota / 2) ? 'text-yellow-400' : 'text-gray-300'}`}
+          >
+            ★
+          </span>
+        ))}
+        <span className="text-sm text-gray-600 ml-2">{nota}/10</span>
+      </div>
+    );
+  };
+
+  const feedbackDetalhes = feedbacks.find(f => f.id === detalhesId);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [formErrors, setFormErrors] = useState<string[]>([]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-gray-800">Feedbacks</h1>
+
+      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+        {activeTab === 'recebidos' && (
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="grid grid-cols-1 gap-4">
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : feedbacks.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-gray-600">Você não recebeu feedbacks ainda</p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {feedbacks.map((fb) => (
+                  <Card
+                    key={fb.id}
+                    className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => setDetalhesId(fb.id)}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <Avatar src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${fb.de.avatar}`} alt={fb.de.nome} size="md" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-800">{fb.de.nome}</p>
+                          <p className="text-xs text-gray-500">para {fb.para.nome}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={fb.tipo}>
+                          {fb.tipo === 'positivo' ? 'Positivo' : fb.tipo === 'construtivo' ? 'Construtivo' : 'Avaliação'}
+                        </Badge>
+                        {fb.privado && <Lock size={16} className="text-gray-400" />}
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{fb.titulo}</h3>
+                    <p className="text-gray-600 text-sm mb-3 line-clamp-3">{fb.mensagem}</p>
+
+                    {fb.nota && (
+                      <div className="mb-3">
+                        {renderStars(fb.nota)}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{fb.data}</span>
+                      <Button
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDetalhesId(fb.id);
+                        }}
+                        className="text-[#10B981] hover:text-[#059669] text-xs"
+                      >
+                        Ver completo
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'enviados' && (
+          <Card className="p-12 text-center">
+            <p className="text-gray-600">Você ainda não enviou feedbacks</p>
+          </Card>
+        )}
+
+        {activeTab === 'solicitar' && (
+          <Card className="p-8 max-w-2xl">
+            <div className="space-y-4">
+              {/* show error summary when present */}
+              {formErrors.length > 0 && (
+                <div role="alert" aria-live="assertive" className="mb-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+                  <strong className="block font-medium">Por favor corrija os seguintes erros:</strong>
+                  <ul className="mt-2 list-disc list-inside text-sm">
+                    {formErrors.map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Para quem?</label>
+                <select
+                  value={formData.paraQuem}
+                  onBlur={() => setTouched({ ...touched, paraQuem: true })}
+                  onChange={(e) => setFormData({ ...formData, paraQuem: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                >
+                  <option value="">Selecione um colaborador</option>
+                  {colaboradores.map((col) => (
+                    <option key={col} value={col}>{col}</option>
+                  ))}
+                </select>
+                {!formData.paraQuem && touched.paraQuem && <p className="text-xs text-red-500">Selecione um colaborador.</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+                <select
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                >
+                  <option value="geral">Geral</option>
+                  <option value="projeto">Sobre projeto específico</option>
+                  <option value="comportamento">Sobre comportamento</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">O que gostaria de saber?</label>
+                <textarea
+                  placeholder="Digite sua pergunta..."
+                  value={formData.pergunta}
+                  onBlur={() => setTouched({ ...touched, pergunta: true })}
+                  onChange={(e) => setFormData({ ...formData, pergunta: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10B981] resize-none"
+                  rows={5}
+                />
+                {!formData.pergunta && touched.pergunta && <p className="text-xs text-red-500">Escreva a pergunta.</p>}
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.anonimo}
+                  onChange={(e) => setFormData({ ...formData, anonimo: e.target.checked })}
+                  className="w-4 h-4 text-[#10B981] border-gray-300 rounded focus:ring-[#10B981]"
+                />
+                <span className="text-sm text-gray-700">Solicitar feedback anônimo</span>
+              </label>
+
+              <Button onClick={handleSolicitar} fullWidth disabled={!formData.paraQuem || !formData.pergunta}>
+                Solicitar Feedback
+              </Button>
+            </div>
+          </Card>
+        )}
+      </Tabs>
+
+      <Modal
+        isOpen={!!detalhesId && !!feedbackDetalhes}
+        onClose={() => setDetalhesId(null)}
+        title="Feedback Completo"
+      >
+        {feedbackDetalhes && (
+          <div className="space-y-6">
+              <div className="flex items-center gap-4">
+              <Avatar src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${feedbackDetalhes.de.avatar}`} alt={feedbackDetalhes.de.nome} size="lg" />
+              <div>
+                <p className="font-semibold text-gray-800">{feedbackDetalhes.de.nome}</p>
+                <p className="text-sm text-gray-500">para {feedbackDetalhes.para.nome}</p>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant={feedbackDetalhes.tipo}>
+                  {feedbackDetalhes.tipo === 'positivo' ? 'Positivo' : feedbackDetalhes.tipo === 'construtivo' ? 'Construtivo' : 'Avaliação'}
+                </Badge>
+                {feedbackDetalhes.privado && (
+                  <span className="flex items-center gap-1 text-xs text-gray-600">
+                    <Lock size={14} /> Privado
+                  </span>
+                )}
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800">{feedbackDetalhes.titulo}</h3>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-gray-700 whitespace-pre-wrap">{feedbackDetalhes.mensagem}</p>
+            </div>
+
+            {feedbackDetalhes.nota && (
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Avaliação</p>
+                {renderStars(feedbackDetalhes.nota)}
+              </div>
+            )}
+
+            <p className="text-xs text-gray-500">{feedbackDetalhes.data}</p>
+
+            <Button variant="outline" fullWidth>
+              Responder
+            </Button>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}

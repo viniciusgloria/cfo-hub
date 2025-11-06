@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Top loading bar animation */
+@keyframes cfo-loading {
+	0% { transform: translateX(-100%); }
+	50% { transform: translateX(0%); }
+	100% { transform: translateX(100%); }
+}
+
+.animate-loading {
+	animation: cfo-loading 1.2s linear infinite;
+}
+
+/* focus-visible helper */
+:focus-visible {
+	outline: 3px solid rgba(16,185,129,0.25);
+	outline-offset: 2px;
+}
+
+/* Avatar utilities */
+@layer components {
+	.avatar { @apply rounded-full object-cover; }
+	.avatar-sm { @apply w-6 h-6; }
+	.avatar-md { @apply w-10 h-10; }
+	.avatar-lg { @apply w-12 h-12; }
+	.avatar-xl { @apply w-20 h-20; }
+}
