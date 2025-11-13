@@ -3,9 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Save, User as UserIcon, Mail, Phone, Briefcase, Building2, Shield, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../components/ui/Card';
-import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Select';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { useAuthStore } from '../store/authStore';
 import { validateEmail, validatePhone, formatPhone } from '../utils/validation';
@@ -155,11 +153,18 @@ export function CadastroUsuario() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-4">
-        <Button variant="outlineContrast" onClick={() => navigate('/colaboradores')}>
+        <Button variant="outline" onClick={() => navigate('/colaboradores')}>
           <ArrowLeft size={20} />
         </Button>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">
+            {isEdit ? 'Editar Colaborador' : 'Novo Colaborador'}
+          </h2>
+          <p className="text-sm text-gray-600">
+            {isEdit ? 'Atualize as informações do colaborador' : 'Cadastre um novo membro da equipe'}
+          </p>
+        </div>
       </div>
-      <PageHeader title={isEdit ? 'Editar Colaborador' : 'Novo Colaborador'} />
 
       <form onSubmit={handleSubmit}>
         <Card className="p-6">
@@ -172,7 +177,7 @@ export function CadastroUsuario() {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nome Completo *
                   </label>
                   <input
@@ -186,7 +191,7 @@ export function CadastroUsuario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email *
                   </label>
                   <div className="relative">
@@ -203,7 +208,7 @@ export function CadastroUsuario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Telefone
                   </label>
                   <div className="relative">
@@ -221,18 +226,18 @@ export function CadastroUsuario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Status
                   </label>
-                  <Select
+                  <select
                     value={formData.status}
                     onChange={(e) => handleChange('status', e.target.value as 'ativo' | 'afastado' | 'ferias')}
-                    className="w-full px-4 py-2"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10B981] focus:border-transparent"
                   >
                     <option value="ativo">Ativo</option>
                     <option value="ferias">Férias</option>
                     <option value="afastado">Afastado</option>
-                  </Select>
+                  </select>
                 </div>
               </div>
             </div>
@@ -245,7 +250,7 @@ export function CadastroUsuario() {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Cargo *
                   </label>
                   <input
@@ -259,17 +264,17 @@ export function CadastroUsuario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Departamento *
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <Select
+                    <select
                       value={formData.departamento}
                       onChange={(e) => handleChange('departamento', e.target.value)}
-                      className={`w-full pl-10 pr-4 py-2 ${
+                      className={`w-full pl-10 pr-4 py-2 border ${
                         errors.departamento ? 'border-red-500' : 'border-gray-300'
-                      } rounded-lg`}
+                      } rounded-lg focus:ring-2 focus:ring-[#10B981] focus:border-transparent`}
                     >
                       <option value="">Selecione...</option>
                       <option value="Financeiro">Financeiro</option>
@@ -279,13 +284,13 @@ export function CadastroUsuario() {
                       <option value="Comercial">Comercial</option>
                       <option value="Operações">Operações</option>
                       <option value="Marketing">Marketing</option>
-                    </Select>
+                    </select>
                   </div>
                   {errors.departamento && <p className="text-sm text-red-600 mt-1">{errors.departamento}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Meta de Horas Mensais *
                   </label>
                   <div className="relative">
@@ -300,7 +305,7 @@ export function CadastroUsuario() {
                     />
                   </div>
                   {errors.metaHorasMensais && <p className="text-sm text-red-600 mt-1">{errors.metaHorasMensais}</p>}
-                  <p className="text-xs text-gray-500 dark:text-white mt-1">Horas de trabalho esperadas por mês</p>
+                  <p className="text-xs text-gray-500 mt-1">Horas de trabalho esperadas por mês</p>
                 </div>
               </div>
             </div>
@@ -313,27 +318,27 @@ export function CadastroUsuario() {
               </h3>
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nível de Acesso
                   </label>
-                  <Select
+                  <select
                     value={formData.role}
                     onChange={(e) => handleChange('role', e.target.value)}
-                    className="w-full px-4 py-2"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10B981] focus:border-transparent"
                     disabled={user?.role !== 'admin'}
                   >
                     <option value="colaborador">Colaborador - Acesso Padrão</option>
                     <option value="gestor">Gestor - Acesso Avançado</option>
                     <option value="rh">RH - Acesso Avançado</option>
                     <option value="admin">Administrador - Acesso Total</option>
-                  </Select>
+                  </select>
                   {user?.role !== 'admin' && (
                     <p className="text-xs text-amber-600 mt-1">
                       Apenas administradores podem alterar o nível de acesso
                     </p>
                   )}
-                  <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <p className="text-xs text-gray-600 dark:text-white">
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-600">
                       <strong>Colaborador:</strong> Registrar ponto, solicitar férias, visualizar informações próprias.
                       <br />
                       <strong>Gestor/RH:</strong> Todos os recursos do colaborador + aprovar solicitações, visualizar relatórios da equipe.
@@ -351,7 +356,7 @@ export function CadastroUsuario() {
                 <Save size={18} />
                 {isEdit ? 'Salvar Alterações' : 'Cadastrar Colaborador'}
               </Button>
-              <Button type="button" variant="outlineContrast" onClick={() => navigate('/colaboradores')}>
+              <Button type="button" variant="outline" onClick={() => navigate('/colaboradores')}>
                 Cancelar
               </Button>
             </div>

@@ -79,19 +79,19 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
         aria-modal="true"
         aria-labelledby="modal-title"
         ref={dialogRef}
-        className={`relative bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto ${className}`}
+        className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 ${className}`}
       >
-        <div className="sticky top-0 flex items-center justify-between p-6 border-b border-gray-200 bg-white">
-          <h2 id="modal-title" className="text-xl font-semibold text-gray-800">{title}</h2>
+        <div className="sticky top-0 flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <h2 id="modal-title" className="text-xl font-semibold text-gray-800 dark:text-gray-100">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
             aria-label="Fechar modal"
           >
             <X size={24} />
           </button>
         </div>
-        <div className="p-6">
+        <div className="p-6 text-gray-800 dark:text-gray-100">
           {children}
         </div>
       </div>

@@ -27,7 +27,7 @@ export function CollaboratorCard({ nome, cargo, departamento, avatar, onOpen }: 
           <p className="text-sm text-gray-500">{cargo}</p>
           <p className="text-xs text-gray-400">{departamento}</p>
         </div>
-        <Button variant="outlineContrast" onClick={onOpen}>Ver perfil</Button>
+        <Button variant="outline" onClick={onOpen}>Ver perfil</Button>
       </div>
     </Card>
   );

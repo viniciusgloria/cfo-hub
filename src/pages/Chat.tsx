@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { PageHeader } from '../components/ui/PageHeader';
 import { Avatar } from '../components/Avatar';
 import { useChatStore } from '../store/chatStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
@@ -85,10 +84,14 @@ export function Chat() {
 
   return (
     <div className="h-[calc(100vh-8rem)]">
-      <PageHeader title="Chat" />
-      {/* subtitle removed to keep header consistent with global standard */}
-      <div className="max-w-4xl mx-auto mt-8">
-        <div className="grid grid-cols-12 gap-4 h-[calc(100%-5rem)]">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Chat</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Converse com seus colegas em tempo real</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-4 h-[calc(100%-5rem)]">
         {/* Lista de conversas */}
         <Card className="col-span-12 md:col-span-4 p-4 flex flex-col">
           <div className="mb-4">
@@ -243,7 +246,6 @@ export function Chat() {
             </div>
           )}
         </Card>
-        </div>
       </div>
     </div>
   );

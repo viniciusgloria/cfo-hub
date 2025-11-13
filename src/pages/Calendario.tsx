@@ -5,7 +5,6 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
-import { PageHeader } from '../components/ui/PageHeader';
 import { ReservaSalaModal } from '../components/ReservaSalaModal';
 import { useReservasStore } from '../store/reservasStore';
 
@@ -66,6 +65,16 @@ export function Calendario() {
   const [reservaModalOpen, setReservaModalOpen] = useState(false);
   const [eventoSelecionado, setEventoSelecionado] = useState<Evento | null>(null);
   const [mesAtual, setMesAtual] = useState(new Date());
+  const [novoEvento, setNovoEvento] = useState({
+    titulo: '',
+    data: '',
+    horaInicio: '',
+    horaFim: '',
+    tipo: 'reuniao',
+    local: '',
+    participantes: [],
+    descricao: '',
+  });
 
   // Sincronizar reservas com eventos
   useEffect(() => {
@@ -147,9 +156,13 @@ export function Calendario() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Calendário">
-        <div className="flex items-center gap-3">
-          <Button onClick={() => setReservaModalOpen(true)} variant="outlineContrast" className="flex items-center gap-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Calendário</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie reuniões, eventos e prazos</p>
+        </div>
+        <div className="flex gap-3">
+          <Button onClick={() => setReservaModalOpen(true)} variant="outline" className="flex items-center gap-2">
             <CalendarIcon size={18} />
             Reservar Sala
           </Button>
@@ -158,7 +171,7 @@ export function Calendario() {
             Novo Evento
           </Button>
         </div>
-      </PageHeader>
+      </div>
 
       <Card className="p-6">
         {/* Navegação do mês */}
@@ -285,20 +298,32 @@ export function Calendario() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Título
             </label>
-            <Input placeholder="Nome do evento" />
+            <Input
+              placeholder="Nome do evento"
+              value={novoEvento.titulo}
+              onChange={e => setNovoEvento({ ...novoEvento, titulo: e.target.value })}
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Data
               </label>
-              <Input type="date" />
+              <Input
+                type="date"
+                value={novoEvento.data}
+                onChange={e => setNovoEvento({ ...novoEvento, data: e.target.value })}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tipo
               </label>
-              <select className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              <select
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                value={novoEvento.tipo}
+                onChange={e => setNovoEvento({ ...novoEvento, tipo: e.target.value })}
+              >
                 <option value="reuniao">Reunião</option>
                 <option value="aniversario">Aniversário</option>
                 <option value="deadline">Prazo</option>
@@ -311,26 +336,78 @@ export function Calendario() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Hora Início
               </label>
-              <Input type="time" />
+              <Input
+                type="time"
+                value={novoEvento.horaInicio}
+                onChange={e => setNovoEvento({ ...novoEvento, horaInicio: e.target.value })}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Hora Fim
               </label>
-              <Input type="time" />
+              <Input
+                type="time"
+                value={novoEvento.horaFim}
+                onChange={e => setNovoEvento({ ...novoEvento, horaFim: e.target.value })}
+              />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Local
             </label>
-            <Input placeholder="Local do evento" leftIcon={<MapPin size={18} />} />
+            <Input
+              placeholder="Local do evento"
+              leftIcon={<MapPin size={18} />}
+              value={novoEvento.local}
+              onChange={e => setNovoEvento({ ...novoEvento, local: e.target.value })}
+            />
           </div>
-            <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outlineContrast" onClick={() => setNovoEventoOpen(false)}>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Descrição
+            </label>
+            <Input
+              placeholder="Descrição do evento"
+              value={novoEvento.descricao}
+              onChange={e => setNovoEvento({ ...novoEvento, descricao: e.target.value })}
+            />
+          </div>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setNovoEventoOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => setNovoEventoOpen(false)}>
+            <Button
+              onClick={() => {
+                if (!novoEvento.titulo || !novoEvento.data || !novoEvento.horaInicio || !novoEvento.horaFim) return;
+                setEventos(prev => [
+                  ...prev,
+                  {
+                    id: Date.now(),
+                    titulo: novoEvento.titulo,
+                    data: novoEvento.data,
+                    horaInicio: novoEvento.horaInicio,
+                    horaFim: novoEvento.horaFim,
+                    tipo: novoEvento.tipo as 'reuniao' | 'aniversario' | 'deadline' | 'reserva',
+                    local: novoEvento.local,
+                    participantes: [],
+                    descricao: novoEvento.descricao,
+                  },
+                ]);
+                setNovoEvento({
+                  titulo: '',
+                  data: '',
+                  horaInicio: '',
+                  horaFim: '',
+                  tipo: 'reuniao',
+                  local: '',
+                  participantes: [],
+                  descricao: '',
+                });
+                setNovoEventoOpen(false);
+              }}
+            >
               Criar Evento
             </Button>
           </div>
@@ -381,7 +458,7 @@ export function Calendario() {
             )}
 
             <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outlineContrast" onClick={() => setEventoSelecionado(null)}>
+              <Button variant="outline" onClick={() => setEventoSelecionado(null)}>
                 Fechar
               </Button>
             </div>

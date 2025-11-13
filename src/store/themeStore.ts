@@ -16,22 +16,24 @@ export const useThemeStore = create<ThemeState>()(
       toggleTheme: () =>
         set((state) => {
           const newTheme = state.theme === 'light' ? 'dark' : 'light';
-          // Aplica classe no document
-          if (newTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
+          window.requestAnimationFrame(() => {
+            if (newTheme === 'dark') {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
+          });
           return { theme: newTheme };
         }),
       setTheme: (theme) =>
         set(() => {
-          // Aplica classe no document
-          if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
+          window.requestAnimationFrame(() => {
+            if (theme === 'dark') {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
+          });
           return { theme };
         }),
     }),

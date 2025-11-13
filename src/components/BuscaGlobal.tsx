@@ -78,34 +78,34 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20">
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[600px] overflow-hidden"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl max-h-[600px] overflow-hidden border border-gray-200 dark:border-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-          <Search className="text-gray-400" size={20} />
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 bg-white dark:bg-gray-800">
+          <Search className="text-gray-400 dark:text-gray-300" size={20} />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar em todo o sistema..."
-            className="flex-1 outline-none text-lg"
+            className="flex-1 outline-none text-lg bg-transparent text-gray-900 dark:text-gray-100"
           />
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-100">
             <X size={20} />
           </button>
         </div>
 
         {/* Results */}
-        <div className="overflow-y-auto max-h-[500px]">
+        <div className="overflow-y-auto max-h-[500px] text-gray-800 dark:text-gray-100">
           {!query ? (
-            <div className="p-12 text-center text-gray-500">
-              <Search size={48} className="mx-auto mb-4 text-gray-300" />
+            <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+              <Search size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" />
               <p>Digite para buscar colaboradores, clientes, solicitações e mais...</p>
             </div>
           ) : !temResultados ? (
-            <div className="p-12 text-center text-gray-500">
+            <div className="p-12 text-center text-gray-500 dark:text-gray-400">
               <p>Nenhum resultado encontrado para "{query}"</p>
             </div>
           ) : (
@@ -113,7 +113,7 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
               {/* Colaboradores */}
               {resultadosColaboradores.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2 flex items-center gap-2">
                     <Users size={16} /> Colaboradores
                   </h3>
                   <div className="space-y-2">
@@ -121,12 +121,12 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
                       <button
                         key={c.id}
                         onClick={() => handleNavigate('/colaboradores')}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-3"
+                        className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-3"
                       >
-                        <UserCog size={18} className="text-gray-400" />
+                        <UserCog size={18} className="text-gray-400 dark:text-gray-300" />
                         <div>
-                          <p className="font-medium text-gray-900">{c.nome}</p>
-                          <p className="text-sm text-gray-500">{c.cargo}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{c.nome}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{c.cargo}</p>
                         </div>
                       </button>
                     ))}
@@ -137,7 +137,7 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
               {/* Clientes */}
               {resultadosClientes.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2 flex items-center gap-2">
                     <Users size={16} /> Clientes
                   </h3>
                   <div className="space-y-2">
@@ -145,10 +145,10 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
                       <button
                         key={c.id}
                         onClick={() => handleNavigate('/clientes')}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                        className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
-                        <p className="font-medium text-gray-900">{c.nome}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{c.nome}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           {c.servicos.slice(0, 2).join(', ')}
                         </p>
                       </button>
@@ -160,7 +160,7 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
               {/* Solicitações */}
               {resultadosSolicitacoes.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2 flex items-center gap-2">
                     <FileText size={16} /> Solicitações
                   </h3>
                   <div className="space-y-2">
@@ -168,10 +168,10 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
                       <button
                         key={s.id}
                         onClick={() => handleNavigate('/solicitacoes')}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                        className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
-                        <p className="font-medium text-gray-900">{s.titulo}</p>
-                        <p className="text-sm text-gray-500 line-clamp-1">{s.descricao}</p>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{s.titulo}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{s.descricao}</p>
                       </button>
                     ))}
                   </div>
@@ -181,7 +181,7 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
               {/* OKRs */}
               {resultadosOKRs.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2 flex items-center gap-2">
                     <Target size={16} /> OKRs
                   </h3>
                   <div className="space-y-2">
@@ -189,10 +189,10 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
                       <button
                         key={o.id}
                         onClick={() => handleNavigate('/okrs')}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-between"
+                        className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-between"
                       >
-                        <p className="font-medium text-gray-900">{o.objetivo}</p>
-                        <span className="text-sm text-gray-500">{o.progresso}%</span>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{o.objetivo}</p>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{o.progresso}%</span>
                       </button>
                     ))}
                   </div>
@@ -202,7 +202,7 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
               {/* Mural */}
               {resultadosPosts.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2 flex items-center gap-2">
                     <MessageSquare size={16} /> Mural
                   </h3>
                   <div className="space-y-2">
@@ -210,10 +210,10 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
                       <button
                         key={p.id}
                         onClick={() => handleNavigate('/mural')}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                        className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
-                        <p className="text-sm font-medium text-gray-700">{p.author}</p>
-                        <p className="text-sm text-gray-500 line-clamp-2">{p.content}</p>
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-100">{p.author}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{p.content}</p>
                       </button>
                     ))}
                   </div>
@@ -224,7 +224,7 @@ export function BuscaGlobal({ isOpen, onClose }: BuscaGlobalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-gray-200 bg-gray-50 text-xs text-gray-500 flex items-center justify-between">
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
           <span>Use ↑↓ para navegar, Enter para selecionar</span>
           <span>ESC para fechar</span>
         </div>

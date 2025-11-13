@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Star, CheckCircle, Clock, AlertCircle, TrendingUp } from 'lucide-react';
 import { Card } from '../components/ui/Card';
-import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
@@ -117,7 +116,7 @@ export function Avaliacoes() {
           >
             <Star
               size={24}
-              className={estrela <= valor ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 dark:text-gray-500'}
+              className={estrela <= valor ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 dark:text-gray-600'}
             />
           </button>
         ))}
@@ -135,20 +134,21 @@ export function Avaliacoes() {
 
   return (
     <div className="space-y-6">
-  <div>
-    <PageHeader title="Avaliações" />
-  </div>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Avaliações de Desempenho</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie avaliações periódicas da equipe</p>
+      </div>
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Pendentes</p>
-              <p className="text-3xl font-bold text-orange-600 dark:text-orange-300">{pendentes.length}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pendentes</p>
+              <p className="text-3xl font-bold text-orange-600">{pendentes.length}</p>
             </div>
             <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <Clock className="text-orange-600 dark:text-orange-300" size={24} />
+              <Clock className="text-orange-600" size={24} />
             </div>
           </div>
         </Card>
@@ -156,13 +156,13 @@ export function Avaliacoes() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Concluídas</p>
-              <p className="text-3xl font-bold text-green-600 dark:text-green-300">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Concluídas</p>
+              <p className="text-3xl font-bold text-green-600">
                 {avaliacoes.filter((a) => a.status === 'concluida').length}
               </p>
             </div>
             <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <CheckCircle className="text-green-600 dark:text-green-300" size={24} />
+              <CheckCircle className="text-green-600" size={24} />
             </div>
           </div>
         </Card>
@@ -170,11 +170,11 @@ export function Avaliacoes() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Minha Média</p>
-              <p className="text-3xl font-bold text-blue-600 dark:text-blue-300">{minhaMediaGeral}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Minha Média</p>
+              <p className="text-3xl font-bold text-blue-600">{minhaMediaGeral}</p>
             </div>
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <TrendingUp className="text-blue-600 dark:text-blue-300" size={24} />
+              <TrendingUp className="text-blue-600" size={24} />
             </div>
           </div>
         </Card>
@@ -183,8 +183,8 @@ export function Avaliacoes() {
       {/* Avaliações pendentes */}
       {pendentes.length > 0 && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-50 mb-4 flex items-center gap-2">
-            <AlertCircle size={20} className="text-orange-600 dark:text-orange-300" />
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <AlertCircle size={20} className="text-orange-600" />
             Avaliações Pendentes
           </h3>
           <div className="space-y-3">
@@ -195,13 +195,13 @@ export function Avaliacoes() {
               return (
                 <div
                   key={avaliacao.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                 >
                   <div className="flex items-center gap-4">
                     <Avatar src={avaliado.avatar} alt={avaliado.nome} size="md" />
                     <div>
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-50">{avaliado.nome}</h4>
-                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-100">{avaliado.nome}</h4>
+                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-600 dark:text-gray-400">
                         <span>{avaliacao.periodo}</span>
                         <span>•</span>
                         <span>Prazo: {new Date(avaliacao.dataLimite).toLocaleDateString('pt-BR')}</span>
@@ -218,12 +218,12 @@ export function Avaliacoes() {
 
       {/* Avaliações recebidas */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-50 mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
           Minhas Avaliações
         </h3>
         <div className="space-y-3">
           {recebidas.length === 0 ? (
-            <p className="text-center text-gray-500 dark:text-gray-300 py-8">
+            <p className="text-center text-gray-500 dark:text-gray-400 py-8">
               Você ainda não recebeu avaliações
             </p>
           ) : (
@@ -234,20 +234,20 @@ export function Avaliacoes() {
               return (
                 <div
                   key={avaliacao.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                 >
                   <div className="flex items-center gap-4">
                     <Avatar src={avaliador.avatar} alt={avaliador.nome} size="md" />
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-gray-800 dark:text-gray-50">
+                        <h4 className="font-semibold text-gray-800 dark:text-gray-100">
                           {avaliador.nome}
                         </h4>
                         <Badge className={avaliacao.status === 'concluida' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'}>
                           {avaliacao.status === 'concluida' ? 'Concluída' : 'Pendente'}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-600 dark:text-gray-400">
                         <span>{avaliacao.periodo}</span>
                         {avaliacao.status === 'concluida' && (
                           <>
@@ -262,12 +262,7 @@ export function Avaliacoes() {
                     </div>
                   </div>
                   {avaliacao.status === 'concluida' && (
-                    <Button
-                      variant="outlineContrast"
-                      className={`border-2 border-gray-800 bg-white text-gray-800 hover:bg-gray-800 hover:text-white hover:border-gray-800
-                        dark:border-gray-600 dark:bg-transparent dark:text-white dark:hover:bg-gray-700 dark:hover:text-white dark:hover:border-gray-700`}
-                      onClick={() => handleAbrirAvaliacao(avaliacao.id)}
-                    >
+                    <Button variant="outline" onClick={() => handleAbrirAvaliacao(avaliacao.id)}>
                       Ver Detalhes
                     </Button>
                   )}
@@ -384,9 +379,9 @@ export function Avaliacoes() {
             </div>
 
             {/* Botões */}
-              <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3">
               <Button
-                variant="outlineContrast"
+                variant="outline"
                 onClick={() => {
                   setAvaliacaoAberta(null);
                   resetForm();

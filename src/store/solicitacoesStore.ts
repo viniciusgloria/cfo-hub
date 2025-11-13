@@ -10,7 +10,6 @@ export interface Solicitacao {
   valor?: number;
   status: 'pendente' | 'aprovada' | 'rejeitada';
   solicitante: { nome: string; avatar: string };
-  destinatario?: { id: number; nome: string; avatar?: string; email?: string };
   data: string;
   urgencia: 'baixa' | 'media' | 'alta';
   anexos?: Attachment[];

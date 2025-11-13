@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { usePageTitle } from '../hooks/usePageTitle';
 import { Link } from 'react-router-dom';
 import { Clock, FileText, Calendar, Settings, Plus, MessageSquare, Users, Target, MessageCircle, TrendingUp, Briefcase, UsersRound, Edit3, BarChart, HelpCircle, FileBarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +34,6 @@ const iconMap: Record<string, any> = {
 };
 
 export function Dashboard() {
-  usePageTitle('Dashboard');
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { registros, bancoHoras } = usePontoStore();
@@ -77,15 +75,16 @@ export function Dashboard() {
     w.type === 'ultimos-registros' || w.type === 'mural-recente'
   );
 
-  // Exibir tour automaticamente apenas UMA vez caso não concluído
+  // Exibir tour automaticamente apenas UMA vez caso não concluído e não tenha sido mostrado
   useEffect(() => {
     if (!tourCompleted && !autoTourShown) {
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         startTour();
         markAutoShown();
       }, 1000);
-      return () => clearTimeout(timer);
     }
+    // Não exibe novamente se já foi concluído ou já foi mostrado
+    return () => {};
   }, [tourCompleted, autoTourShown, startTour, markAutoShown]);
 
   const handleWidgetClick = (type: string) => {

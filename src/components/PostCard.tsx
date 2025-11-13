@@ -1,4 +1,4 @@
-﻿import { Heart, ThumbsUp, PartyPopper, MessageCircle, X } from 'lucide-react';
+import { Heart, ThumbsUp, PartyPopper, MessageCircle, X } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { useMuralStore } from '../store/muralStore';
@@ -14,10 +14,10 @@ export function PostCard({ postId }: Props) {
   const toggle = useMuralStore((s) => s.toggleReaction);
   const addComment = useMuralStore((s) => s.addComment);
   const [comment, setComment] = useState('');
-  const [previewId, setPreviewId] = useState<string | null>(null);
+        const [previewId, setPreviewId] = useState<string | null>(null);
 
   if (!post) return null;
-  const previewAttachment = post.attachments?.find((a) => a.id === previewId) ?? null;
+        const previewAttachment = post.attachments?.find((a) => a.id === previewId) ?? null;
 
   return (
     <>
@@ -148,3 +148,4 @@ export function PostCard({ postId }: Props) {
     </>
   );
 }
+

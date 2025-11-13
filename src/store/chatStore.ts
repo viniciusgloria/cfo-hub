@@ -93,7 +93,6 @@ export const useChatStore = create<ChatState>()(
           timestamp: new Date().toISOString(),
           lida: false,
         };
-
         set((state) => ({
           mensagens: [...state.mensagens, novaMensagem],
           conversas: state.conversas.map((c) =>
@@ -102,6 +101,7 @@ export const useChatStore = create<ChatState>()(
                   ...c,
                   ultimaMensagem: texto,
                   ultimaAtualizacao: novaMensagem.timestamp,
+                  naoLidas: c.naoLidas + 1,
                 }
               : c
           ),
@@ -110,27 +110,26 @@ export const useChatStore = create<ChatState>()(
 
       marcarComoLida: (conversaId) => {
         set((state) => ({
-          mensagens: state.mensagens.map((m) =>
-            m.conversaId === conversaId ? { ...m, lida: true } : m
-          ),
           conversas: state.conversas.map((c) =>
             c.id === conversaId ? { ...c, naoLidas: 0 } : c
+          ),
+          mensagens: state.mensagens.map((m) =>
+            m.conversaId === conversaId ? { ...m, lida: true } : m
           ),
         }));
       },
 
-      iniciarConversa: (participantes) => {
+      iniciarConversa: (participantes: string[]) => {
         const novaConversa: Conversa = {
           id: Date.now(),
           participantes,
+          ultimaMensagem: '',
           ultimaAtualizacao: new Date().toISOString(),
           naoLidas: 0,
         };
-
         set((state) => ({
           conversas: [...state.conversas, novaConversa],
         }));
-
         return novaConversa.id;
       },
 

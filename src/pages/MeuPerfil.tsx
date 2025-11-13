@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { PageHeader } from '../components/ui/PageHeader';
 import { Input } from '../components/ui/Input';
 import { Camera, Save, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -158,7 +157,7 @@ export function MeuPerfil() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-    <PageHeader title="Meu Perfil" />
+        <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
         <p className="text-gray-600 mt-1">Gerencie suas informações pessoais</p>
       </div>
 
@@ -306,7 +305,7 @@ export function MeuPerfil() {
               />
               {celular && (
                 <Button
-                  variant="outlineContrast"
+                  variant="outline"
                   onClick={handleWhatsAppClick}
                   className="flex-shrink-0"
                   title="Abrir WhatsApp"
@@ -334,7 +333,7 @@ export function MeuPerfil() {
               />
               {discord && (
                 <Button
-                  variant="outlineContrast"
+                  variant="outline"
                   onClick={handleDiscordClick}
                   className="flex-shrink-0"
                   title="Copiar Discord"

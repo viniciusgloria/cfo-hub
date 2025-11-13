@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Attachment } from '../types';
 
-export type PostType = 'anuncio' | 'livre' | 'atualizacao' | 'comemoracao';
+export type PostType = 'anuncio' | 'feedback' | 'atualizacao' | 'comemoracao';
 
 export interface Comment {
   id: number;
@@ -54,7 +54,7 @@ const mockPosts: Post[] = [
     author: 'Carlos Lima',
     avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=Carlos',
     content: 'Feedback: O fluxo de aprovação poderia mostrar prazos quando houver anexos.',
-  type: 'livre',
+    type: 'feedback',
     createdAt: '01/11/2025 17:30',
     attachments: [],
     reactions: { like: 2, heart: 1, party: 0 },
