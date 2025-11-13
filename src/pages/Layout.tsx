@@ -40,7 +40,7 @@ export function Layout() {
       <div className="flex-1 md:ml-[260px] flex flex-col">
         <Header title={pageTitle} onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 mt-16">
           <Outlet />
         </main>
       </div>
