@@ -21,6 +21,7 @@ import { Avaliacoes } from './pages/Avaliacoes';
 import { NavigationProgress } from './components/ui/NavigationProgress';
 import { GuidedTour } from './components/GuidedTour';
 import { useThemeStore } from './store/themeStore';
+import './build-timestamp';
 
 function App() {
   const { theme, setTheme } = useThemeStore();
