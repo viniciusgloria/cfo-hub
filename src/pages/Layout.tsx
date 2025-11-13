@@ -1,35 +1,25 @@
 import { useState } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Header } from '../components/layout/Header';
 import { useAuthStore } from '../store/authStore';
 
-const pageTitles: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/ponto': 'Ponto',
-  '/solicitacoes': 'Solicitações',
-  '/okrs': 'OKRs',
-  '/feedbacks': 'Feedbacks',
-  '/mural': 'Mural',
-  '/clientes': 'Clientes',
-  '/colaboradores': 'Colaboradores',
-  '/perfil': 'Meu Perfil',
-  '/configuracoes': 'Configurações',
-};
+// Título fixo, não precisa mais do mapeamento de páginas
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // desktop collapsed
   const isAuth = useAuthStore((state) => state.isAuth);
-  const location = useLocation();
+  // Removido useLocation pois não é mais necessário
 
   if (!isAuth) {
     return <Navigate to="/" replace />;
   }
 
   // useLocation funciona em BrowserRouter e HashRouter (usa o pathname correto do roteador)
-  const currentPath = location.pathname;
-  const pageTitle = pageTitles[currentPath] || 'CFO Hub';
+
+  // Título fixo conforme solicitado
+  const pageTitle = 'Flow HUB - Sistema de Gestão Integrado';
 
   return (
   <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
