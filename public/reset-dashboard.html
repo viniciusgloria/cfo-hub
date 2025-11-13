@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Dashboard - CFO Hub</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #10B981;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #10B981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #059669;
+        }
+        button.danger {
+            background: #EF4444;
+        }
+        button.danger:hover {
+            background: #DC2626;
+        }
+        .success {
+            color: #10B981;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        .info {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Reset Dashboard CFO Hub</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Sobre este reset:</strong>
+            <p>Esta página limpa o cache local do Dashboard para aplicar as configurações mais recentes dos widgets.</p>
+            <p><strong>O que será resetado:</strong></p>
+            <ul>
+                <li>✅ Configuração dos widgets do Dashboard</li>
+                <li>✅ Cache do Vite (desenvolvimento)</li>
+                <li>❌ Seus dados (ponto, solicitações, etc.) <strong>NÃO</strong> serão afetados</li>
+            </ul>
+        </div>
+
+        <button onclick="resetDashboard()">
+            🔄 Reset Dashboard
+        </button>
+        
+        <button onclick="resetAll()" class="danger">
+            ⚠️ Reset COMPLETO (todos os dados)
+        </button>
+        
+        <button onclick="window.location.href='/'">
+            ← Voltar para o App
+        </button>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        function resetDashboard() {
+            const keys = Object.keys(localStorage);
+            const dashboardKeys = keys.filter(k => k.includes('dashboard'));
+            
+            dashboardKeys.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('Removido:', key);
+            });
+            
+            document.getElementById('message').innerHTML = `
+                <p class="success">
+                    ✅ Dashboard resetado com sucesso! 
+                    <br><strong>${dashboardKeys.length} item(ns) removido(s)</strong>
+                    <br><br>
+                    <a href="/">Voltar para o app →</a>
+                </p>
+            `;
+        }
+
+        function resetAll() {
+            if (!confirm('⚠️ TEM CERTEZA? Isso apagará TODOS os dados locais (ponto, solicitações, etc.)!')) {
+                return;
+            }
+            
+            const count = localStorage.length;
+            localStorage.clear();
+            
+            document.getElementById('message').innerHTML = `
+                <p class="success">
+                    ✅ TODOS os dados foram removidos! 
+                    <br><strong>${count} item(ns) removido(s)</strong>
+                    <br><br>
+                    <a href="/">Voltar para o app →</a>
+                </p>
+            `;
+        }
+    </script>
+</body>
+</html>
