@@ -167,17 +167,6 @@ export function Dashboard() {
 
   const dadosSemana = getUltimos7Dias();
 
-  // Debug: logar widgets
-  console.log('🔍 Dashboard Debug:', {
-    totalWidgets: widgets.length,
-    enabledWidgets: enabledWidgets.length,
-    cardWidgets: cardWidgets.length,
-    actionWidgets: actionWidgets.length,
-    sectionWidgets: sectionWidgets.length,
-    userRole,
-    cardWidgetsList: cardWidgets.map(w => `${w.id} (${w.enabled ? 'enabled' : 'disabled'})`),
-  });
-
   return (
     <div className="space-y-6">
       {/* Botões utilitários à esquerda */}
