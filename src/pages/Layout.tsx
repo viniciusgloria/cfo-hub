@@ -8,11 +8,17 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/ponto': 'Ponto',
   '/solicitacoes': 'Solicitações',
+  '/solicitacoes-ponto': 'Solicitações de Ponto',
+  '/calendario': 'Calendário',
+  '/chat': 'Chat',
   '/okrs': 'OKRs',
+  '/avaliacoes': 'Avaliações',
   '/feedbacks': 'Feedbacks',
   '/mural': 'Mural',
+  '/relatorios': 'Relatórios',
   '/clientes': 'Clientes',
   '/colaboradores': 'Colaboradores',
+  '/perfil': 'Meu Perfil',
   '/configuracoes': 'Configurações',
 };
 
@@ -28,13 +34,13 @@ export function Layout() {
   const pageTitle = pageTitles[currentPath] || 'CFO Hub';
 
   return (
-    <div className="flex min-h-screen bg-[#F9FAFB]">
+    <div className="flex min-h-screen bg-[#F9FAFB] dark:bg-gray-900">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 md:ml-[260px]">
+      <div className="flex-1 md:ml-[260px] flex flex-col">
         <Header title={pageTitle} onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="pt-16 p-6">
+        <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>
