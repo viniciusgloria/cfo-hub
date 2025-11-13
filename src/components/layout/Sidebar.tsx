@@ -23,24 +23,26 @@ import { NavItem } from '../../types';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
+// Menu principal na ordem solicitada
 const navItems: NavItem[] = [
-  { label: 'Avaliações', path: '/avaliacoes', icon: Award },
-  { label: 'Calendário', path: '/calendario', icon: Calendar },
-  { label: 'Chat', path: '/chat', icon: MessageSquare },
-  { label: 'Clientes', path: '/clientes', icon: Users },
-  { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
-  { label: 'Configurações', path: '/configuracoes', icon: Settings },
   { label: 'Dashboard', path: '/dashboard', icon: Home },
-  { label: 'Feedbacks', path: '/feedbacks', icon: MessageCircle },
-  { label: 'Mural', path: '/mural', icon: MessageSquare },
-  { label: 'OKRs', path: '/okrs', icon: Target },
   { label: 'Ponto', path: '/ponto', icon: Clock },
-  { label: 'Relatórios', path: '/relatorios', icon: BarChart },
+  { label: 'Mural', path: '/mural', icon: MessageSquare },
+  { label: 'Calendário', path: '/calendario', icon: Calendar },
+  { label: 'Clientes', path: '/clientes', icon: Users },
+  { label: 'Chat', path: '/chat', icon: MessageSquare },
+  { label: 'Feedbacks', path: '/feedbacks', icon: MessageCircle },
   { label: 'Solicitações', path: '/solicitacoes', icon: FileText },
-].sort((a, b) => a.label.localeCompare(b.label));
+  { label: 'Configurações', path: '/configuracoes', icon: Settings },
+];
 
+// Menu secundário (visualizações por nível de acesso) na ordem solicitada
 const navItemsGestor: NavItem[] = [
+  { label: 'Avaliações', path: '/avaliacoes', icon: Award },
   { label: 'Aprovações Ponto', path: '/solicitacoes-ponto', icon: ClipboardCheck },
+  { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
+  { label: 'OKRs', path: '/okrs', icon: Target },
+  { label: 'Relatórios', path: '/relatorios', icon: BarChart },
 ];
 
 interface SidebarProps {
