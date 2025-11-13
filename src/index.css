@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+  }
+
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 98%;
+  }
+
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors;
+  }
+}
+
 /* Top loading bar animation */
 @keyframes cfo-loading {
 	0% { transform: translateX(-100%); }
@@ -26,4 +42,30 @@
 	.avatar-md { @apply w-10 h-10; }
 	.avatar-lg { @apply w-12 h-12; }
 	.avatar-xl { @apply w-20 h-20; }
+
+	/* Modal accent palette utilities */
+	.modal-accent {
+		--modal-bg: #1f2937; /* main modal background */
+		--modal-border: #374151; /* border */
+		--modal-placeholder: #9CA3AF; /* placeholder */
+		background-color: var(--modal-bg);
+		color: #fff;
+	}
+
+	.modal-accent-field {
+		background-color: var(--modal-bg);
+		color: #fff;
+		border: 1px solid var(--modal-border);
+		border-radius: .5rem;
+		padding: .5rem 1rem;
+	}
+
+	.modal-accent-field::placeholder {
+		color: var(--modal-placeholder);
+		opacity: 1;
+	}
 }
+
+/* Hide scrollbar but allow scrolling */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

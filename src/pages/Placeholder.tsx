@@ -1,4 +1,5 @@
 import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
 
 interface PlaceholderProps {
   title: string;
@@ -6,9 +7,11 @@ interface PlaceholderProps {
 
 export function Placeholder({ title }: PlaceholderProps) {
   return (
-    <Card className="p-12 text-center">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-2">{title}</h2>
-      <p className="text-gray-600">Esta página está em desenvolvimento</p>
-    </Card>
+    <div>
+      <PageHeader title={title} />
+      <Card className="p-12 text-center">
+        <p className="text-gray-600">Esta página está em desenvolvimento</p>
+      </Card>
+    </div>
   );
 }

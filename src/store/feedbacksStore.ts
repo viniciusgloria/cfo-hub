@@ -15,7 +15,9 @@ export interface Feedback {
 
 interface FeedbacksState {
   feedbacks: Feedback[];
+  feedbacksEnviados: Feedback[];
   adicionarFeedback: (fb: Feedback) => void;
+  adicionarFeedbackEnviado: (fb: Feedback) => void;
   solicitarFeedback: (paraQuem: string, tipo: string, pergunta: string, anonimo: boolean) => void;
   reset: () => void;
 }
@@ -58,15 +60,18 @@ export const useFeedbacksStore = create<FeedbacksState>()(
   persist(
     (set) => ({
       feedbacks: mockFeedbacks,
+      feedbacksEnviados: [],
       adicionarFeedback: (fb) => set((state) => ({
         feedbacks: [fb, ...state.feedbacks]
       })),
+      adicionarFeedbackEnviado: (fb) => set((state) => ({
+        feedbacksEnviados: [fb, ...state.feedbacksEnviados]
+      })),
       solicitarFeedback: (paraQuem, tipo, pergunta, anonimo) => {
         console.log('Feedback solicitado:', { paraQuem, tipo, pergunta, anonimo });
-      }
-      ,
-      reset: () => set({ feedbacks: mockFeedbacks }),
+      },
+      reset: () => set({ feedbacks: mockFeedbacks, feedbacksEnviados: [] }),
     }),
-    { name: 'cfo:feedbacks', partialize: (s) => ({ feedbacks: s.feedbacks }) }
+    { name: 'cfo:feedbacks', partialize: (s) => ({ feedbacks: s.feedbacks, feedbacksEnviados: s.feedbacksEnviados }) }
   )
 );

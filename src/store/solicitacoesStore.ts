@@ -1,16 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { Attachment } from '../types';
 
 export interface Solicitacao {
   id: string;
-  tipo: 'material' | 'sala' | 'reembolso' | 'ferias' | 'homeoffice';
+  tipo: 'material' | 'reembolso' | 'ferias' | 'homeoffice';
   titulo: string;
   descricao: string;
   valor?: number;
   status: 'pendente' | 'aprovada' | 'rejeitada';
   solicitante: { nome: string; avatar: string };
+  destinatario?: { id: number; nome: string; avatar?: string; email?: string };
   data: string;
   urgencia: 'baixa' | 'media' | 'alta';
+  anexos?: Attachment[];
 }
 
 interface SolicitacoesState {
@@ -30,16 +33,6 @@ const mockSolicitacoes: Solicitacao[] = [
     solicitante: { nome: 'Maria Santos', avatar: 'Maria' },
     data: '02/11/2024',
     urgencia: 'media'
-  },
-  {
-    id: '2',
-    tipo: 'sala',
-    titulo: 'Sala A - Reunião Cliente',
-    descricao: 'Reserva para 05/11 das 14h às 16h',
-    status: 'aprovada',
-    solicitante: { nome: 'Carlos Lima', avatar: 'Carlos' },
-    data: '01/11/2024',
-    urgencia: 'alta'
   },
   {
     id: '3',

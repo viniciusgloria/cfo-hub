@@ -45,4 +45,31 @@ describe('ponto store', () => {
     // bancoHoras = total(8h15) - expected(8h) => +0:15
     expect(state.bancoHoras).toBe('+0:15');
   });
+
+  it('registers entrada with localizacao', () => {
+    vi.setSystemTime(new Date('2024-11-06T09:00:00'));
+    usePontoStore.getState().registrarPonto('entrada', { bairro: 'Trindade', cidade: 'Florianópolis', estado: 'SC' });
+    const s = usePontoStore.getState();
+    expect(s.registros.length).toBe(1);
+    expect(s.registros[0].localizacaoEntrada).toEqual({ bairro: 'Trindade', cidade: 'Florianópolis', estado: 'SC' });
+  });
+
+  it('registers entrada with permission error', () => {
+    vi.setSystemTime(new Date('2024-11-06T09:00:00'));
+    usePontoStore.getState().registrarPonto('entrada', { bairro: 'Erro de Permissão', cidade: '', estado: '' });
+    const s = usePontoStore.getState();
+    expect(s.registros.length).toBe(1);
+    expect(s.registros[0].localizacaoEntrada?.bairro).toBe('Erro de Permissão');
+  });
+
+  it('registers saida with different localizacao', () => {
+    vi.setSystemTime(new Date('2024-11-06T09:00:00'));
+    usePontoStore.getState().registrarPonto('entrada', { bairro: 'Centro', cidade: 'Florianópolis', estado: 'SC' });
+    vi.setSystemTime(new Date('2024-11-06T18:00:00'));
+    usePontoStore.getState().registrarPonto('saida', { bairro: 'Trindade', cidade: 'Florianópolis', estado: 'SC' });
+    const s = usePontoStore.getState();
+    expect(s.registros.length).toBe(1);
+    expect(s.registros[0].localizacaoEntrada?.bairro).toBe('Centro');
+    expect(s.registros[0].localizacaoSaida?.bairro).toBe('Trindade');
+  });
 });

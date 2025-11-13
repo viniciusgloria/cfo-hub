@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { Attachment } from '../types';
 
-export type PostType = 'anuncio' | 'feedback' | 'atualizacao';
+export type PostType = 'anuncio' | 'livre' | 'atualizacao' | 'comemoracao';
 
 export interface Comment {
   id: number;
@@ -17,7 +18,7 @@ export interface Post {
   content: string;
   type: PostType;
   createdAt: string;
-  attachments?: { id: number; name: string; url: string; type: string }[];
+  attachments?: Attachment[];
   reactions: { like: number; heart: number; party: number };
   myReactions?: { like?: boolean; heart?: boolean; party?: boolean };
   comments: Comment[];
@@ -53,7 +54,7 @@ const mockPosts: Post[] = [
     author: 'Carlos Lima',
     avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=Carlos',
     content: 'Feedback: O fluxo de aprovação poderia mostrar prazos quando houver anexos.',
-    type: 'feedback',
+  type: 'livre',
     createdAt: '01/11/2025 17:30',
     attachments: [],
     reactions: { like: 2, heart: 1, party: 0 },
@@ -81,7 +82,7 @@ export const useMuralStore = create<MuralState>()(
           content: p.content,
           type: p.type,
           createdAt: new Date().toLocaleString(),
-          attachments: (p as any).attachments || [],
+          attachments: p.attachments ? [...p.attachments] : [],
           reactions: { like: 0, heart: 0, party: 0 },
           myReactions: {},
           comments: [],

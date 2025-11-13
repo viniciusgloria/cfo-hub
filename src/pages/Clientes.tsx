@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { Search, RefreshCw } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -10,6 +11,7 @@ import toast from 'react-hot-toast';
 import { useClientesStore } from '../store/clientesStore';
 
 export function Clientes() {
+  usePageTitle('Clientes');
   const { clientes, filtroStatus, busca, setFiltroStatus, setBusca } = useClientesStore();
   const [isSyncing, setIsSyncing] = useState(false);
 

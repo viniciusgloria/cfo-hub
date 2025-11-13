@@ -1,31 +1,46 @@
 import { useAuthStore } from './authStore';
 import { usePontoStore } from './pontoStore';
 import { useSolicitacoesStore } from './solicitacoesStore';
+import { useAjustesPontoStore } from './ajustesPontoStore';
 import { useOKRsStore } from './okrsStore';
 import { useFeedbacksStore } from './feedbacksStore';
 import { useMuralStore } from './muralStore';
 import { useColaboradoresStore } from './colaboradoresStore';
 import { useClientesStore } from './clientesStore';
+import { useDashboardStore } from './dashboardStore';
+import { useEmpresaStore } from './empresaStore';
+import { useReservasStore } from './reservasStore';
+import { useNotificacoesStore } from './notificacoesStore';
 
 export type PersistKey =
   | 'auth'
   | 'ponto'
   | 'solicitacoes'
+  | 'ajustes-ponto'
   | 'okrs'
   | 'feedbacks'
   | 'mural'
   | 'colaboradores'
-  | 'clientes';
+  | 'clientes'
+  | 'dashboard'
+  | 'empresa'
+  | 'reservas'
+  | 'notificacoes';
 
 export const persistKeyMap: Record<PersistKey, string> = {
   auth: 'cfo:auth',
   ponto: 'cfo:ponto',
   solicitacoes: 'cfo:solicitacoes',
+  'ajustes-ponto': 'cfo:ajustes-ponto',
   okrs: 'cfo:okrs',
   feedbacks: 'cfo:feedbacks',
   mural: 'cfo:mural',
   colaboradores: 'cfo:colaboradores',
   clientes: 'cfo:clientes',
+  dashboard: 'cfo:dashboard',
+  empresa: 'cfo:empresa',
+  reservas: 'cfo:reservas',
+  notificacoes: 'cfo:notificacoes',
 };
 
 export function resetStores(keys: PersistKey[]) {
@@ -42,6 +57,9 @@ export function resetStores(keys: PersistKey[]) {
         case 'solicitacoes':
           useSolicitacoesStore.getState().reset?.();
           break;
+        case 'ajustes-ponto':
+          useAjustesPontoStore.getState().reset?.();
+          break;
         case 'okrs':
           useOKRsStore.getState().reset?.();
           break;
@@ -56,6 +74,18 @@ export function resetStores(keys: PersistKey[]) {
           break;
         case 'clientes':
           useClientesStore.getState().reset?.();
+          break;
+        case 'dashboard':
+          useDashboardStore.getState().reset?.();
+          break;
+        case 'empresa':
+          useEmpresaStore.getState().reset?.();
+          break;
+        case 'reservas':
+          useReservasStore.getState().reset?.();
+          break;
+        case 'notificacoes':
+          useNotificacoesStore.getState().reset?.();
           break;
       }
     } catch (e) {

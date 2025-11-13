@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
@@ -13,9 +14,9 @@ import { Avatar } from '../components/Avatar';
 const colaboradores = ['Maria Santos', 'Carlos Lima', 'João Silva', 'Ana Costa'];
 
 export function Feedbacks() {
+  usePageTitle('Feedbacks');
   const [activeTab, setActiveTab] = useState('recebidos');
   const [detalhesId, setDetalhesId] = useState<string | null>(null);
-  // removed isSolicitarModal state (not used)
   const [formData, setFormData] = useState({
     paraQuem: '',
     tipo: 'geral',
@@ -24,11 +25,11 @@ export function Feedbacks() {
   });
   const [touched, setTouched] = useState({ paraQuem: false, pergunta: false });
 
-  const { feedbacks, solicitarFeedback } = useFeedbacksStore();
+  const { feedbacks, feedbacksEnviados, solicitarFeedback } = useFeedbacksStore();
 
   const tabs = [
     { id: 'recebidos', label: 'Recebidos', count: feedbacks.length },
-    { id: 'enviados', label: 'Enviados', count: 0 },
+    { id: 'enviados', label: 'Enviados', count: feedbacksEnviados.length },
     { id: 'solicitar', label: 'Solicitar' }
   ];
 
@@ -67,6 +68,19 @@ export function Feedbacks() {
   };
 
   const feedbackDetalhes = feedbacks.find(f => f.id === detalhesId);
+  const [replyText, setReplyText] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+
+  const enviarResposta = () => {
+    if (!replyText.trim()) {
+      toast.error('Digite uma resposta');
+      return;
+    }
+    // Mock da resposta: apenas exibe toast
+    toast.success('Resposta enviada');
+    setReplyText('');
+    setIsReplying(false);
+  };
   const [isLoading, setIsLoading] = useState(true);
 
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -146,9 +160,53 @@ export function Feedbacks() {
         )}
 
         {activeTab === 'enviados' && (
-          <Card className="p-12 text-center">
-            <p className="text-gray-600">Você ainda não enviou feedbacks</p>
-          </Card>
+          <div className="space-y-4">
+            {feedbacksEnviados.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-gray-600">Você ainda não enviou feedbacks</p>
+                <Button onClick={() => setActiveTab('solicitar')} className="mt-4">
+                  Solicitar Feedback
+                </Button>
+              </Card>
+            ) : (
+              feedbacksEnviados.map((fb) => (
+                <Card
+                  key={fb.id}
+                  className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => setDetalhesId(fb.id)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3 flex-1">
+                      <Avatar src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${fb.para.avatar}`} alt={fb.para.nome} size="md" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">Para: {fb.para.nome}</p>
+                        <p className="text-xs text-gray-500">De: {fb.de.nome}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={fb.tipo}>
+                        {fb.tipo === 'positivo' ? 'Positivo' : fb.tipo === 'construtivo' ? 'Construtivo' : 'Avaliação'}
+                      </Badge>
+                      {fb.privado && <Lock size={16} className="text-gray-400" />}
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{fb.titulo}</h3>
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-3">{fb.mensagem}</p>
+
+                  {fb.nota && (
+                    <div className="mb-3">
+                      {renderStars(fb.nota)}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{fb.data}</span>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
         )}
 
         {activeTab === 'solicitar' && (
@@ -268,9 +326,25 @@ export function Feedbacks() {
 
             <p className="text-xs text-gray-500">{feedbackDetalhes.data}</p>
 
-            <Button variant="outline" fullWidth>
-              Responder
-            </Button>
+            {!isReplying ? (
+              <Button variant="outline" fullWidth onClick={() => setIsReplying(true)}>
+                Responder
+              </Button>
+            ) : (
+              <div className="space-y-3 mt-4">
+                <textarea
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10B981] resize-none"
+                  placeholder="Escreva sua resposta..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                />
+                <div className="flex gap-3">
+                  <Button variant="outline" fullWidth onClick={() => { setIsReplying(false); setReplyText(''); }}>Cancelar</Button>
+                  <Button fullWidth onClick={enviarResposta} disabled={!replyText.trim()}>Enviar</Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>

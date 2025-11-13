@@ -96,3 +96,15 @@ export function formatCEP(value: string) {
   if (nums.length <= 5) return nums;
   return nums.slice(0,5) + '-' + nums.slice(5);
 }
+
+// Email validation
+export function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+// Phone validation (10 or 11 digits)
+export function validatePhone(phone: string): boolean {
+  const nums = onlyDigits(phone);
+  return nums.length === 10 || nums.length === 11;
+}

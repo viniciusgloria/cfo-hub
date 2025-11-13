@@ -10,6 +10,7 @@ export interface Colaborador {
   telefone?: string;
   avatar?: string;
   status: 'ativo' | 'afastado' | 'ferias';
+  metaHorasMensais?: number; // Meta de horas por mês (padrão 176h)
 }
 
 interface ColaboradoresState {
@@ -18,14 +19,16 @@ interface ColaboradoresState {
   filtroStatus: string;
   setBusca: (b: string) => void;
   setFiltroStatus: (s: string) => void;
+  adicionarColaborador: (dados: Omit<Colaborador, 'id'>) => void;
+  atualizarColaborador: (id: number, dados: Partial<Colaborador>) => void;
   reset: () => void;
 }
 
 const mock: Colaborador[] = [
-  { id: 1, nome: 'Ana Costa', cargo: 'Contadora', departamento: 'Financeiro', email: 'ana@cfo.com', telefone: '+55 11 98877-6655', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana', status: 'ativo' },
-  { id: 2, nome: 'Bruno Almeida', cargo: 'Analista de Dados', departamento: 'BI', email: 'bruno@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bruno', status: 'ativo' },
-  { id: 3, nome: 'Carla Pereira', cargo: 'Gerente de RH', departamento: 'RH', email: 'carla@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carla', status: 'ferias' },
-  { id: 4, nome: 'Diego Ruiz', cargo: 'Desenvolvedor', departamento: 'Tech', email: 'diego@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Diego', status: 'afastado' },
+  { id: 1, nome: 'Ana Costa', cargo: 'Contadora', departamento: 'Financeiro', email: 'ana@cfo.com', telefone: '+55 11 98877-6655', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana', status: 'ativo', metaHorasMensais: 176 },
+  { id: 2, nome: 'Bruno Almeida', cargo: 'Analista de Dados', departamento: 'BI', email: 'bruno@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bruno', status: 'ativo', metaHorasMensais: 176 },
+  { id: 3, nome: 'Carla Pereira', cargo: 'Gerente de RH', departamento: 'RH', email: 'carla@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carla', status: 'ferias', metaHorasMensais: 176 },
+  { id: 4, nome: 'Diego Ruiz', cargo: 'Desenvolvedor', departamento: 'Tech', email: 'diego@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Diego', status: 'afastado', metaHorasMensais: 176 },
 ];
 
 export const useColaboradoresStore = create<ColaboradoresState>()(
@@ -36,6 +39,18 @@ export const useColaboradoresStore = create<ColaboradoresState>()(
       filtroStatus: 'Todos',
       setBusca: (b) => set({ busca: b }),
       setFiltroStatus: (s) => set({ filtroStatus: s }),
+      adicionarColaborador: (dados) =>
+        set((state) => {
+          const newId = Math.max(...state.colaboradores.map((c) => c.id)) + 1;
+          const newColaborador: Colaborador = { id: newId, ...dados };
+          return { colaboradores: [...state.colaboradores, newColaborador] };
+        }),
+      atualizarColaborador: (id, dados) =>
+        set((state) => ({
+          colaboradores: state.colaboradores.map((c) =>
+            c.id === id ? { ...c, ...dados } : c
+          ),
+        })),
       reset: () => set({ colaboradores: mock, busca: '', filtroStatus: 'Todos' }),
     }),
     { name: 'cfo:colaboradores', partialize: (s) => ({ colaboradores: s.colaboradores }) }

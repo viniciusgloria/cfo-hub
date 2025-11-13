@@ -1,0 +1,289 @@
+import { useState, useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
+import { Clock, CheckCircle, XCircle, Paperclip, ImageIcon, X } from 'lucide-react';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { Tabs } from '../components/ui/Tabs';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { Avatar } from '../components/Avatar';
+import { SkeletonCard } from '../components/ui/SkeletonCard';
+import { useAjustesPontoStore } from '../store/ajustesPontoStore';
+import { useAuthStore } from '../store/authStore';
+import toast from 'react-hot-toast';
+import { Attachment } from '../types';
+
+const tipoLabel = { ajuste: 'Ajuste de Ponto', atestado: 'Atestado Médico' };
+const alvoLabel = { entrada: 'Entrada', saida: 'Saída' };
+
+export function SolicitacoesPonto() {
+  usePageTitle('Aprovações de Ponto');
+  const [activeTab, setActiveTab] = useState('todas');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [actionType, setActionType] = useState<'aprovar' | 'rejeitar'>('aprovar');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const { solicitacoes, atualizarStatus } = useAjustesPontoStore();
+  const { user } = useAuthStore();
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  const isAprovador = user?.role === 'admin' || user?.role === 'gestor' || user?.role === 'rh';
+
+  const tabs = [
+    { id: 'todas', label: 'Todas', count: solicitacoes.length },
+    { id: 'pendentes', label: 'Pendentes', count: solicitacoes.filter(s => s.status === 'pendente').length },
+    { id: 'historico', label: 'Histórico', count: solicitacoes.filter(s => s.status !== 'pendente').length }
+  ];
+
+  const solicitacoesFiltradas = solicitacoes.filter(s => {
+    if (activeTab === 'pendentes') return s.status === 'pendente';
+    if (activeTab === 'historico') return s.status !== 'pendente';
+    return true;
+  });
+
+  const handleAprovar = (id: string) => {
+    setActionId(id);
+    setActionType('aprovar');
+    setConfirmOpen(true);
+  };
+
+  const handleRejeitar = (id: string) => {
+    setActionId(id);
+    setActionType('rejeitar');
+    setConfirmOpen(true);
+  };
+
+  const confirmAction = (reason?: string) => {
+    if (!actionId || !user) return;
+
+    const status = actionType === 'aprovar' ? 'aprovada' : 'rejeitada';
+    const decididoPor = { id: user.id, name: user.name, role: user.role };
+    
+    atualizarStatus(actionId, status, decididoPor);
+    
+    toast[actionType === 'aprovar' ? 'success' : 'error'](
+      `Solicitação ${actionType === 'aprovar' ? 'aprovada' : 'rejeitada'}${reason ? `: ${reason}` : ''}`
+    );
+    
+    setConfirmOpen(false);
+    setActionId(null);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
+
+  const handleBulkApprove = () => {
+    if (selectedIds.length === 0 || !user) return;
+    const decididoPor = { id: user.id, name: user.name, role: user.role };
+    selectedIds.forEach((id) => atualizarStatus(id, 'aprovada', decididoPor));
+    toast.success(`${selectedIds.length} solicitações aprovadas`);
+    setSelectedIds([]);
+  };
+
+  const handleBulkReject = () => {
+    if (selectedIds.length === 0 || !user) return;
+    const decididoPor = { id: user.id, name: user.name, role: user.role };
+    selectedIds.forEach((id) => atualizarStatus(id, 'rejeitada', decididoPor));
+    toast.error(`${selectedIds.length} solicitações rejeitadas`);
+    setSelectedIds([]);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors text-gray-800 dark:text-gray-100 p-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Aprovações de Ponto</h1>
+        {isAprovador && selectedIds.length > 0 && (
+          <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg dark:bg-transparent">
+            <span className="text-sm text-gray-700 dark:text-white">{selectedIds.length} selecionada(s)</span>
+            <div className="flex gap-2">
+              <Button onClick={handleBulkApprove} className="text-sm">Aprovar</Button>
+              <Button onClick={handleBulkReject} variant="outline" className="text-sm border-red-300 text-red-600">Rejeitar</Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : solicitacoesFiltradas.length === 0 ? (
+          <EmptyState 
+            title="Nenhuma solicitação" 
+            description={activeTab === 'pendentes' ? 'Não há solicitações pendentes no momento.' : 'Não há solicitações para exibir.'} 
+          />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {solicitacoesFiltradas.map((sol) => (
+              <Card key={sol.id} className="p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    {isAprovador && sol.status === 'pendente' && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(sol.id)}
+                        onChange={() => toggleSelect(sol.id)}
+                        aria-label={`Selecionar solicitação de ${sol.colaboradorNome}`}
+                      />
+                    )}
+                    <Badge variant={sol.tipo === 'ajuste' ? 'material' : 'ferias'}>
+                      {tipoLabel[sol.tipo]}
+                    </Badge>
+                  </div>
+                  <Badge variant={sol.status}>
+                    {sol.status === 'pendente' ? 'Pendente' : sol.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <Avatar 
+                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${sol.colaboradorNome}`} 
+                    alt={sol.colaboradorNome} 
+                    size="md" 
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{sol.colaboradorNome}</p>
+                    <p className="text-xs text-gray-500">{sol.colaboradorEmail}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4 text-sm">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Clock size={14} />
+                    <span>Data: <strong>{sol.data}</strong></span>
+                  </div>
+                  
+                  {sol.tipo === 'ajuste' && (
+                    <div className="pl-5 text-gray-700">
+                      <p>Alvo: <strong>{alvoLabel[sol.alvo!]}</strong></p>
+                      <p>Horário: <strong>{sol.horarioNovo}</strong></p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 mb-1">Motivo/Justificativa:</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">{sol.motivo}</p>
+                </div>
+
+                {sol.anexos && sol.anexos.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-2">Anexos:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {sol.anexos.map((a) => {
+                        const isImage = a.mimeType.startsWith('image/');
+                        return (
+                          <div key={a.id} className="flex items-center gap-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                            {isImage ? (
+                              <button
+                                type="button"
+                                className="flex items-center gap-1 text-blue-600 hover:underline"
+                                onClick={() => setPreviewAttachment(a)}
+                              >
+                                <ImageIcon size={14} />
+                                <span className="truncate max-w-[120px]" title={a.name}>{a.name}</span>
+                              </button>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Paperclip size={14} />
+                                <span className="truncate max-w-[120px]" title={a.name}>{a.name}</span>
+                              </span>
+                            )}
+                            <a href={a.dataUrl} download={a.name} className="text-blue-600 underline">baixar</a>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {sol.decididoPor && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded text-xs text-gray-600">
+                    <p>
+                      {sol.status === 'aprovada' ? '✓ Aprovada' : '✗ Rejeitada'} por{' '}
+                      <strong>{sol.decididoPor.name}</strong> ({sol.decididoPor.role})
+                    </p>
+                    <p className="mt-1">{new Date(sol.decididoEm!).toLocaleString('pt-BR')}</p>
+                  </div>
+                )}
+
+                {sol.status === 'pendente' && isAprovador && (
+                  <div className="flex gap-2 pt-4 border-t border-gray-200">
+                    <Button
+                      variant="primary"
+                      onClick={() => handleAprovar(sol.id)}
+                      className="flex-1 text-sm flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle size={16} />
+                      Aprovar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleRejeitar(sol.id)}
+                      className="flex-1 text-sm border-red-300 text-red-600 flex items-center justify-center gap-2"
+                    >
+                      <XCircle size={16} />
+                      Rejeitar
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </Tabs>
+
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={confirmAction}
+        title={actionType === 'aprovar' ? 'Confirmar aprovação' : 'Confirmar rejeição'}
+      />
+
+      {previewAttachment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewAttachment(null)}
+        >
+          <div
+            className="relative flex max-h-[90vh] max-w-5xl flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute -top-12 right-0 rounded-full bg-white/80 p-2 text-gray-700 hover:bg-white"
+              onClick={() => setPreviewAttachment(null)}
+              aria-label="Fechar visualização"
+            >
+              <X size={18} />
+            </button>
+            <img
+              src={previewAttachment.dataUrl}
+              alt={previewAttachment.name}
+              className="max-h-[80vh] w-auto max-w-full rounded shadow-lg"
+            />
+            <p className="mt-3 text-sm text-gray-200">{previewAttachment.name}</p>
+            <a
+              href={previewAttachment.dataUrl}
+              download={previewAttachment.name}
+              className="mt-2 text-xs text-blue-200 underline"
+            >
+              Baixar
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

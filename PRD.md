@@ -84,8 +84,8 @@ Empresas 10-50 pessoas precisam:
 - [x] Banco de horas automático
 - [x] Espelho de ponto mensal
 - [x] Solicitação de ajuste
-- [ ] Geolocalização opcional
-- [ ] Exportar para folha (CSV)
+- [x] Geolocalização opcional
+- [x] Exportar para folha (CSV)
 
 #### Solicitações & Aprovações
 - [x] Tipos: Material, Sala, Reembolso, Férias, Home Office
@@ -93,8 +93,8 @@ Empresas 10-50 pessoas precisam:
 - [x] Status visual (pendente/aprovada/rejeitada)
 - [x] Histórico completo
 - [x] Notificações toast
-- [ ] Upload comprovantes
-- [ ] Aprovar em lote
+- [x] Upload comprovantes
+- [x] Aprovar em lote
 
 #### Metas & Performance
 - [x] OKRs (Objectives & Key Results)

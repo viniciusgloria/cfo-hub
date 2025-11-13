@@ -1,0 +1,399 @@
+import { useState, useEffect } from 'react';
+import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users as UsersIcon } from 'lucide-react';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
+import { Input } from '../components/ui/Input';
+import { Badge } from '../components/ui/Badge';
+import { PageHeader } from '../components/ui/PageHeader';
+import { ReservaSalaModal } from '../components/ReservaSalaModal';
+import { useReservasStore } from '../store/reservasStore';
+
+interface Evento {
+  id: number;
+  titulo: string;
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  tipo: 'reuniao' | 'aniversario' | 'deadline' | 'reserva';
+  local?: string;
+  participantes?: string[];
+  descricao?: string;
+}
+
+const mockEventos: Evento[] = [
+  {
+    id: 1,
+    titulo: 'Reunião de Equipe',
+    data: '2025-11-15',
+    horaInicio: '10:00',
+    horaFim: '11:00',
+    tipo: 'reuniao',
+    local: 'Sala de Reuniões 1',
+    participantes: ['João Silva', 'Maria Santos'],
+  },
+  {
+    id: 2,
+    titulo: 'Aniversário - Carlos Souza',
+    data: '2025-11-18',
+    horaInicio: '15:00',
+    horaFim: '16:00',
+    tipo: 'aniversario',
+  },
+  {
+    id: 3,
+    titulo: 'Entrega do Projeto X',
+    data: '2025-11-20',
+    horaInicio: '23:59',
+    horaFim: '23:59',
+    tipo: 'deadline',
+  },
+  {
+    id: 4,
+    titulo: 'Reserva Sala 2',
+    data: '2025-11-22',
+    horaInicio: '14:00',
+    horaFim: '16:00',
+    tipo: 'reserva',
+    local: 'Sala de Reuniões 2',
+  },
+];
+
+export function Calendario() {
+  const { reservas } = useReservasStore();
+  const [eventos, setEventos] = useState<Evento[]>(mockEventos);
+  const [novoEventoOpen, setNovoEventoOpen] = useState(false);
+  const [reservaModalOpen, setReservaModalOpen] = useState(false);
+  const [eventoSelecionado, setEventoSelecionado] = useState<Evento | null>(null);
+  const [mesAtual, setMesAtual] = useState(new Date());
+
+  // Sincronizar reservas com eventos
+  useEffect(() => {
+    const eventosDeReservas: Evento[] = reservas
+      .filter(r => r.status === 'ativa')
+      .map(r => ({
+        id: parseInt(r.id),
+        titulo: `Reserva: ${r.tipoSala === 'call' ? 'Sala de Call' : 'Sala de Reunião'}`,
+        data: r.data,
+        horaInicio: r.horaInicio,
+        horaFim: r.horaFim,
+        tipo: 'reserva' as const,
+        local: r.tipoSala === 'call' ? 'Sala de Call' : 'Sala de Reunião',
+        participantes: [r.usuarioNome],
+        descricao: r.motivo,
+      }));
+    
+    setEventos([...mockEventos, ...eventosDeReservas]);
+  }, [reservas]);
+
+  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+  const getDiasDoMes = () => {
+    const ano = mesAtual.getFullYear();
+    const mes = mesAtual.getMonth();
+    const primeiroDia = new Date(ano, mes, 1);
+    const ultimoDia = new Date(ano, mes + 1, 0);
+    const dias: (Date | null)[] = [];
+
+    // Adiciona dias vazios antes do primeiro dia do mês
+    for (let i = 0; i < primeiroDia.getDay(); i++) {
+      dias.push(null);
+    }
+
+    // Adiciona todos os dias do mês
+    for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+      dias.push(new Date(ano, mes, dia));
+    }
+
+    return dias;
+  };
+
+  const getEventosParaDia = (data: Date | null) => {
+    if (!data) return [];
+    const dataStr = data.toISOString().split('T')[0];
+    return eventos.filter(e => e.data === dataStr);
+  };
+
+  const proximoMes = () => {
+    setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1, 1));
+  };
+
+  const mesAnterior = () => {
+    setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() - 1, 1));
+  };
+
+  const getCorTipo = (tipo: string) => {
+    switch (tipo) {
+      case 'reuniao': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+      case 'aniversario': return 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300';
+      case 'deadline': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+      case 'reserva': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
+      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+    }
+  };
+
+  const getTipoLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'reuniao': return 'Reunião';
+      case 'aniversario': return 'Aniversário';
+      case 'deadline': return 'Prazo';
+      case 'reserva': return 'Reserva';
+      default: return tipo;
+    }
+  };
+
+  const hoje = new Date().toISOString().split('T')[0];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Calendário">
+        <div className="flex items-center gap-3">
+          <Button onClick={() => setReservaModalOpen(true)} variant="outlineContrast" className="flex items-center gap-2">
+            <CalendarIcon size={18} />
+            Reservar Sala
+          </Button>
+          <Button onClick={() => setNovoEventoOpen(true)} className="flex items-center gap-2">
+            <Plus size={18} />
+            Novo Evento
+          </Button>
+        </div>
+      </PageHeader>
+
+      <Card className="p-6">
+        {/* Navegação do mês */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={mesAnterior}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+            {meses[mesAtual.getMonth()]} {mesAtual.getFullYear()}
+          </h3>
+          <button
+            onClick={proximoMes}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        {/* Grid do calendário */}
+        <div className="grid grid-cols-7 gap-2">
+          {/* Cabeçalho dos dias da semana */}
+          {diasSemana.map(dia => (
+            <div key={dia} className="text-center font-semibold text-gray-600 dark:text-gray-400 text-sm py-2">
+              {dia}
+            </div>
+          ))}
+
+          {/* Dias do mês */}
+          {getDiasDoMes().map((data, index) => {
+            const eventosNoDia = getEventosParaDia(data);
+            const ehHoje = data?.toISOString().split('T')[0] === hoje;
+
+            return (
+              <div
+                key={index}
+                className={`min-h-[100px] p-2 border border-gray-200 dark:border-gray-700 rounded-lg ${
+                  data ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'
+                } ${ehHoje ? 'ring-2 ring-green-500' : ''}`}
+              >
+                {data && (
+                  <>
+                    <div className={`text-sm font-medium mb-1 ${ehHoje ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                      {data.getDate()}
+                    </div>
+                    <div className="space-y-1">
+                      {eventosNoDia.slice(0, 2).map(evento => (
+                        <button
+                          key={evento.id}
+                          onClick={() => setEventoSelecionado(evento)}
+                          className={`w-full text-left text-xs p-1 rounded truncate ${getCorTipo(evento.tipo)}`}
+                        >
+                          {evento.horaInicio} {evento.titulo}
+                        </button>
+                      ))}
+                      {eventosNoDia.length > 2 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 pl-1">
+                          +{eventosNoDia.length - 2} mais
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Lista de próximos eventos */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+          <CalendarIcon size={20} />
+          Próximos Eventos
+        </h3>
+        <div className="space-y-3">
+          {eventos.slice(0, 5).map(evento => (
+            <button
+              key={evento.id}
+              onClick={() => setEventoSelecionado(evento)}
+              className="w-full text-left p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-100">{evento.titulo}</h4>
+                    <Badge className={getCorTipo(evento.tipo)}>
+                      {getTipoLabel(evento.tipo)}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon size={14} />
+                      {new Date(evento.data + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock size={14} />
+                      {evento.horaInicio} - {evento.horaFim}
+                    </span>
+                    {evento.local && (
+                      <span className="flex items-center gap-1">
+                        <MapPin size={14} />
+                        {evento.local}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {/* Modal Novo Evento */}
+      <Modal
+        isOpen={novoEventoOpen}
+        onClose={() => setNovoEventoOpen(false)}
+        title="Novo Evento"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Título
+            </label>
+            <Input placeholder="Nome do evento" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Data
+              </label>
+              <Input type="date" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Tipo
+              </label>
+              <select className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                <option value="reuniao">Reunião</option>
+                <option value="aniversario">Aniversário</option>
+                <option value="deadline">Prazo</option>
+                <option value="reserva">Reserva</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Hora Início
+              </label>
+              <Input type="time" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Hora Fim
+              </label>
+              <Input type="time" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Local
+            </label>
+            <Input placeholder="Local do evento" leftIcon={<MapPin size={18} />} />
+          </div>
+            <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outlineContrast" onClick={() => setNovoEventoOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={() => setNovoEventoOpen(false)}>
+              Criar Evento
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Detalhes do Evento */}
+      {eventoSelecionado && (
+        <Modal
+          isOpen={!!eventoSelecionado}
+          onClose={() => setEventoSelecionado(null)}
+          title={eventoSelecionado.titulo}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge className={getCorTipo(eventoSelecionado.tipo)}>
+                {getTipoLabel(eventoSelecionado.tipo)}
+              </Badge>
+            </div>
+            
+            <div className="space-y-3 text-gray-700 dark:text-gray-300">
+              <div className="flex items-center gap-3">
+                <CalendarIcon size={18} className="text-gray-400" />
+                <span>{new Date(eventoSelecionado.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Clock size={18} className="text-gray-400" />
+                <span>{eventoSelecionado.horaInicio} - {eventoSelecionado.horaFim}</span>
+              </div>
+              {eventoSelecionado.local && (
+                <div className="flex items-center gap-3">
+                  <MapPin size={18} className="text-gray-400" />
+                  <span>{eventoSelecionado.local}</span>
+                </div>
+              )}
+              {eventoSelecionado.participantes && eventoSelecionado.participantes.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <UsersIcon size={18} className="text-gray-400" />
+                  <span>{eventoSelecionado.participantes.join(', ')}</span>
+                </div>
+              )}
+            </div>
+
+            {eventoSelecionado.descricao && (
+              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400">{eventoSelecionado.descricao}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outlineContrast" onClick={() => setEventoSelecionado(null)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Reservar Sala */}
+      <ReservaSalaModal
+        isOpen={reservaModalOpen}
+        onClose={() => setReservaModalOpen(false)}
+      />
+    </div>
+  );
+}

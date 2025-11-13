@@ -7,6 +7,7 @@ interface AuthState {
   isAuth: boolean;
   login: (email: string, pass: string) => void;
   logout: () => void;
+  updateAvatar: (avatarUrl: string) => void;
   reset: () => void;
 }
 
@@ -30,6 +31,11 @@ export const useAuthStore = create<AuthState>()(
       },
       logout: () => {
         set({ user: null, isAuth: false });
+      },
+      updateAvatar: (avatarUrl: string) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, avatar: avatarUrl } : null,
+        }));
       },
       reset: () => set({ user: null, isAuth: false }),
     }),
