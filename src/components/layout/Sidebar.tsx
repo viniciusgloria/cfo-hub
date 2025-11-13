@@ -136,7 +136,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             </button>
           </div>
 
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
