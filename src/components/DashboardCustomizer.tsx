@@ -139,7 +139,17 @@ export function DashboardCustomizer({
               const isDragging = draggedIndex === index;
               const isDragOver = dragOverIndex === index;
               const isVisible = widget.enabled;
-              
+
+              // Visualização dinâmica: cards vizinhos se movem
+              let translateY = 0;
+              if (draggedIndex !== null && dragOverIndex !== null && index !== draggedIndex) {
+                if (draggedIndex < dragOverIndex && index > draggedIndex && index <= dragOverIndex) {
+                  translateY = -56; // move para cima
+                } else if (draggedIndex > dragOverIndex && index < draggedIndex && index >= dragOverIndex) {
+                  translateY = 56; // move para baixo
+                }
+              }
+
               return (
                 <div 
                   key={widget.id} 
@@ -147,12 +157,16 @@ export function DashboardCustomizer({
                   onDragEnter={(e) => handleDragEnter(e, index)}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index)}
+                  style={{
+                    transition: 'transform 0.2s cubic-bezier(.4,2,.3,1)',
+                    transform: translateY ? `translateY(${translateY}px)` : undefined,
+                  }}
                 >
                   {/* Indicador de posição */}
                   <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
                     {index + 1}
                   </div>
-                  
+
                   <div
                     draggable={true}
                     onDragStart={(e) => handleDragStart(e, index)}
@@ -184,7 +198,7 @@ export function DashboardCustomizer({
                       }`}>
                         {widget.label}
                       </span>
-                      
+
                       <button
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
@@ -206,7 +220,7 @@ export function DashboardCustomizer({
                       </button>
                     </div>
                   </div>
-                  
+
                   {/* Indicador de drop zone quando arrastando */}
                   {isDragging && (
                     <div className="absolute inset-0 ml-6 border-2 border-dashed border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center pointer-events-none">

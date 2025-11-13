@@ -72,11 +72,25 @@ Empresas 10-50 pessoas precisam:
 ### 3.1 MVP (V1 - Atual)
 **Status:** ✅ Implementado + Deploy ready
 
+#### Navegação
+ 
+ Título do header fixo: 'Flow HUB - Sistema de Gestão Integrado' exibido em todas as páginas
+
 #### Core
-- [x] Login hierarquizado (Admin/Gestor/Colaborador)
-- [x] Convite por email (cadastro fechado)
-- [x] Dashboard personalizado por role
-- [x] Persistência localStorage com reset granular
+[x] Login hierarquizado (Admin/Gestor/Colaborador)
+[x] Convite por email (cadastro fechado)
+[x] Dashboard personalizado por role
+[x] Cabeçalho na Dashboard igual ao modelo Colaboradores, com botões 'Tour Guiado' e 'Personalizar' no topo
+[x] Persistência localStorage com reset granular
+[x] Persistência de mensagens do chat (Zustand + localStorage)
+[x] Criação de eventos no calendário
+[x] Dark mode em modais e cards
+[x] Sidebar de personalização com drag-and-drop funcional
+  - Sistema completo de reordenamento de widgets
+  - Feedback visual durante arraste (escala e opacidade)
+  - Sem limitação de quantidade de widgets exibidos
+  - Persistência da ordem no localStorage
+  - HTML5 Drag and Drop API com estados hover/drag
 
 #### Ponto Eletrônico
 - [x] Registro entrada/saída com timestamp
@@ -106,12 +120,13 @@ Empresas 10-50 pessoas precisam:
 - [ ] Relatórios analytics
 
 #### Comunicação
-- [x] Mural social (posts + reações + comentários)
-- [x] Tipos: Avisos, Comunicados, Celebrações, Eventos
-- [x] Reações (👍❤️🎉)
-- [x] Comentários inline
-- [ ] Menções (@user)
-- [ ] Anexos em posts
+[x] Mural social (posts + reações + comentários)
+[x] Tipos: Avisos, Comunicados, Celebrações, Eventos
+[x] Reações (👍❤️🎉)
+[x] Comentários inline
+[x] Chat persistente (mensagens salvas/localStorage)
+[ ] Menções (@user)
+[ ] Anexos em posts
 
 #### CRM Clientes (CFO Company Interno)
 - [x] Lista clientes com MRR
@@ -512,8 +527,36 @@ Monitoring: Sentry + Logtail
 
 ---
 
-**Versão:** 1.0
-**Última atualização:** 05/11/2025
+**Versão:** 1.1
+**Última atualização:** 13/11/2024
 **Próxima revisão:** Dez/2024 (pós V1.5)
 **Owner:** João Silva (Founder/Dev)
 **Aprovação:** Pendente (sócios CFO Company)
+
+---
+
+## CHANGELOG
+
+### v1.1 (13/11/2024)
+**Funcionalidades:**
+- ✅ Implementado drag-and-drop funcional no sidebar de personalização do Dashboard
+- ✅ Removida limitação de 14 widgets no sidebar de personalização
+- ✅ Sistema de reordenamento completo com HTML5 Drag and Drop API
+- ✅ Feedback visual durante arraste (escala, opacidade, hover states)
+- ✅ Persistência automática da ordem dos widgets no localStorage
+- ✅ Atualização sequencial do campo 'order' após reordenamento
+
+**Melhorias:**
+- Sistema de drag-and-drop com estados visuais claros (draggedIndex, dragOverIndex)
+- Handlers otimizados: onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd
+- Reordenamento instantâneo com feedback visual em tempo real
+- Código limpo e manutenível com TypeScript strict mode
+
+**Arquivos modificados:**
+- `src/components/DashboardCustomizer.tsx` - Sistema de drag-and-drop
+- `src/pages/Dashboard.tsx` - Renderização ordenada de widgets
+- `src/store/dashboardStore.ts` - Função reorderWidgets
+
+### v1.0 (05/11/2024)
+- Lançamento inicial do MVP
+- Todas as funcionalidades core implementadas
