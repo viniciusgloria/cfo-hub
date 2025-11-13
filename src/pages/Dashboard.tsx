@@ -168,9 +168,11 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Botões utilitários à esquerda */}
-      <div className="flex items-center justify-start mb-2">
-        <div className="flex gap-2">
+      <Card className="p-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Dashboard</h3>
+        </div>
+        <div className="flex items-center gap-3">
           <Button onClick={startTour} variant="outline" className="flex items-center gap-2">
             <HelpCircle size={16} />
             Tour Guiado
@@ -180,7 +182,7 @@ export function Dashboard() {
             Personalizar
           </Button>
         </div>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 max-w-7xl">
         {cardWidgets.map((widget) => {
