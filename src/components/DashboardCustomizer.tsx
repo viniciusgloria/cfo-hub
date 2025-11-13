@@ -40,12 +40,22 @@ export function DashboardCustomizer({
   onToggleWidget,
   onReorderWidgets,
 }: DashboardCustomizerProps) {
-  const [draggedId, setDraggedId] = useState<string | null>(null);
 
-  const handleDragStart = (e: React.DragEvent, widgetId: string) => {
-    setDraggedId(widgetId);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Sempre ordenar widgets pelo campo 'order' antes de renderizar e manipular
+  const orderedWidgets = [...widgets].sort((a, b) => a.order - b.order);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', widgetId);
+  };
+
+  const handleDragEnter = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -53,21 +63,32 @@ export function DashboardCustomizer({
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
+  const handleDrop = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
+    e.stopPropagation();
+    
+    if (draggedIndex === null || draggedIndex === index) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
 
-    const draggedIndex = widgets.findIndex((w) => w.id === draggedId);
-    const targetIndex = widgets.findIndex((w) => w.id === targetId);
+    // Reordena o array
+    const newOrdered = [...orderedWidgets];
+    const [removed] = newOrdered.splice(draggedIndex, 1);
+    newOrdered.splice(index, 0, removed);
 
-    const newWidgets = [...widgets];
-    const [removed] = newWidgets.splice(draggedIndex, 1);
-    newWidgets.splice(targetIndex, 0, removed);
-
-    // Atualizar ordem
-    const reorderedWidgets = newWidgets.map((w, idx) => ({ ...w, order: idx }));
+    // Atualiza o campo 'order' de todos os widgets sequencialmente
+    const reorderedWidgets = newOrdered.map((w, idx) => ({ ...w, order: idx }));
+    
     onReorderWidgets(reorderedWidgets);
-    setDraggedId(null);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   useEffect(() => {
@@ -113,26 +134,34 @@ export function DashboardCustomizer({
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-2">
-            {widgets.map((widget, index) => {
+            {orderedWidgets.map((widget, index) => {
               const Icon = iconMap[widget.icon];
-              const isDragging = draggedId === widget.id;
+              const isDragging = draggedIndex === index;
+              const isDragOver = dragOverIndex === index;
               const isVisible = widget.enabled;
               
               return (
-                <div key={widget.id} className="relative">
+                <div 
+                  key={widget.id} 
+                  className="relative"
+                  onDragEnter={(e) => handleDragEnter(e, index)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, index)}
+                >
                   {/* Indicador de posição */}
                   <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
                     {index + 1}
                   </div>
                   
                   <div
-                    draggable
-                    onDragStart={(e: React.DragEvent) => handleDragStart(e, widget.id)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e: React.DragEvent) => handleDrop(e, widget.id)}
+                    draggable={true}
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragEnd={handleDragEnd}
                     className={`ml-6 p-3 cursor-move hover:shadow-lg transition-all bg-white dark:bg-gray-700 border-2 rounded-lg ${
                       isDragging
                         ? 'opacity-30 border-blue-500 scale-95 shadow-xl' 
+                        : isDragOver && draggedIndex !== null
+                          ? 'border-blue-400 scale-105'
                         : isVisible
                           ? 'border-green-300 dark:border-green-600 shadow-sm hover:border-green-400'
                           : 'border-gray-200 dark:border-gray-600 opacity-50 hover:opacity-70'
@@ -157,6 +186,7 @@ export function DashboardCustomizer({
                       </span>
                       
                       <button
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
                           onToggleWidget(widget.id);
@@ -179,7 +209,7 @@ export function DashboardCustomizer({
                   
                   {/* Indicador de drop zone quando arrastando */}
                   {isDragging && (
-                    <div className="absolute inset-0 ml-6 border-2 border-dashed border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                    <div className="absolute inset-0 ml-6 border-2 border-dashed border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center pointer-events-none">
                       <span className="text-sm font-medium text-blue-600 dark:text-blue-300">
                         Arraste para reposicionar
                       </span>

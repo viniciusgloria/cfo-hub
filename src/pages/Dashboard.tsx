@@ -11,7 +11,7 @@ import { useSolicitacoesStore } from '../store/solicitacoesStore';
 import { useMuralStore } from '../store/muralStore';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useTourStore } from '../store/tourStore';
-import { useAuthStore } from '../store/authStore';
+// import { useAuthStore } from '../store/authStore';
 import { Avatar } from '../components/Avatar';
 import { parseTimeToMinutes } from '../utils/time';
 
@@ -35,7 +35,7 @@ const iconMap: Record<string, any> = {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  // Removido 'user' pois não é mais necessário
   const { registros, bancoHoras } = usePontoStore();
   const { solicitacoes } = useSolicitacoesStore();
   const { posts } = useMuralStore();
@@ -46,32 +46,19 @@ export function Dashboard() {
   const solicitacoesPendentes = solicitacoes.filter(s => s.status === 'pendente').length;
   
   // Filtrar widgets baseado no role do usuário
-  const userRole = user?.role || 'colaborador';
+  // Removido userRole pois não é mais necessário
   
-  const filteredWidgets = widgets.filter(w => {
-    // Widgets exclusivos de admin
-    const adminOnly = ['colaboradores', 'configuracoes', 'ajustes-ponto', 'relatorios'];
-    // Widgets de gestor e admin
-    const gestorWidgets = ['solicitacoes-pendentes', 'clientes'];
-    
-    if (userRole === 'colaborador') {
-      return w.enabled && !adminOnly.includes(w.type) && !gestorWidgets.includes(w.type);
-    }
-    if (userRole === 'gestor') {
-      return w.enabled && !adminOnly.includes(w.type);
-    }
-    // admin vê tudo
-    return w.enabled;
-  });
-  
-  const enabledWidgets = filteredWidgets.sort((a, b) => a.order - b.order);
-  
-  // Separar widgets por categoria
-  const actionWidgets = enabledWidgets.filter(w => 
+  // Exibir todos os widgets habilitados, ordenados pelo campo 'order' (garante drag-and-drop correto)
+  const orderedWidgets = widgets
+    .filter(w => w.enabled)
+    .sort((a, b) => a.order - b.order);
+
+  // Separar widgets por categoria, mantendo a ordem
+  const actionWidgets = orderedWidgets.filter(w => 
     !w.type.startsWith('card-') && w.type !== 'ultimos-registros' && w.type !== 'mural-recente'
   );
-  const cardWidgets = enabledWidgets.filter(w => w.type.startsWith('card-'));
-  const sectionWidgets = enabledWidgets.filter(w => 
+  const cardWidgets = orderedWidgets.filter(w => w.type.startsWith('card-'));
+  const sectionWidgets = orderedWidgets.filter(w => 
     w.type === 'ultimos-registros' || w.type === 'mural-recente'
   );
 
@@ -329,7 +316,7 @@ export function Dashboard() {
       <DashboardCustomizer
         isOpen={configOpen}
         onClose={() => setConfigOpen(false)}
-        widgets={widgets}
+        widgets={[...widgets].sort((a, b) => a.order - b.order)}
         onToggleWidget={toggleWidget}
         onReorderWidgets={reorderWidgets}
       />

@@ -53,17 +53,17 @@ const defaultWidgets: Widget[] = [
   { id: 'nova-solicitacao', type: 'nova-solicitacao', label: 'Nova Solicitação', icon: 'Plus', color: 'bg-[#3B82F6]', enabled: true, order: 1 },
   { id: 'agendar-sala', type: 'agendar-sala', label: 'Agendar Sala', icon: 'Calendar', color: 'bg-[#8B5CF6]', enabled: true, order: 2 },
   { id: 'ver-mural', type: 'ver-mural', label: 'Ver Mural', icon: 'MessageSquare', color: 'bg-[#F59E0B]', enabled: true, order: 3 },
-  { id: 'banco-horas', type: 'banco-horas', label: 'Banco de Horas', icon: 'TrendingUp', color: 'bg-[#10B981]', enabled: true, order: 4 },
-  { id: 'grafico-horas', type: 'grafico-horas', label: 'Gráfico de Horas', icon: 'BarChart', color: 'bg-[#6366F1]', enabled: true, order: 5 },
-  { id: 'solicitacoes-pendentes', type: 'solicitacoes-pendentes', label: 'Solicitações Pendentes', icon: 'FileText', color: 'bg-[#EF4444]', enabled: true, order: 6 },
+  { id: 'banco-horas', type: 'banco-horas', label: 'Banco de Horas', icon: 'TrendingUp', color: 'bg-[#10B981]', enabled: false, order: 4 },
+  { id: 'grafico-horas', type: 'grafico-horas', label: 'Gráfico de Horas', icon: 'BarChart', color: 'bg-[#6366F1]', enabled: false, order: 5 },
+  { id: 'solicitacoes-pendentes', type: 'solicitacoes-pendentes', label: 'Solicitações Pendentes', icon: 'FileText', color: 'bg-[#EF4444]', enabled: false, order: 6 },
   { id: 'reunioes-hoje', type: 'reunioes-hoje', label: 'Reuniões Hoje', icon: 'Users', color: 'bg-[#3B82F6]', enabled: false, order: 7 },
-  { id: 'okrs', type: 'okrs', label: 'Meus OKRs', icon: 'Target', color: 'bg-[#8B5CF6]', enabled: true, order: 8 },
-  { id: 'feedbacks', type: 'feedbacks', label: 'Feedbacks', icon: 'MessageCircle', color: 'bg-[#F59E0B]', enabled: true, order: 9 },
-  { id: 'clientes', type: 'clientes', label: 'Clientes', icon: 'Briefcase', color: 'bg-[#6366F1]', enabled: true, order: 10 },
-  { id: 'colaboradores', type: 'colaboradores', label: 'Colaboradores', icon: 'UsersRound', color: 'bg-[#EC4899]', enabled: true, order: 11 },
-  { id: 'configuracoes', type: 'configuracoes', label: 'Configurações', icon: 'Settings', color: 'bg-[#64748B]', enabled: true, order: 12 },
-  { id: 'ajustes-ponto', type: 'ajustes-ponto', label: 'Ajustes de Ponto', icon: 'Edit3', color: 'bg-[#F97316]', enabled: true, order: 13 },
-  { id: 'relatorios', type: 'relatorios', label: 'Relatórios', icon: 'FileBarChart2', color: 'bg-[#14B8A6]', enabled: true, order: 14 },
+  { id: 'okrs', type: 'okrs', label: 'Meus OKRs', icon: 'Target', color: 'bg-[#8B5CF6]', enabled: false, order: 8 },
+  { id: 'feedbacks', type: 'feedbacks', label: 'Feedbacks', icon: 'MessageCircle', color: 'bg-[#F59E0B]', enabled: false, order: 9 },
+  { id: 'clientes', type: 'clientes', label: 'Clientes', icon: 'Briefcase', color: 'bg-[#6366F1]', enabled: false, order: 10 },
+  { id: 'colaboradores', type: 'colaboradores', label: 'Colaboradores', icon: 'UsersRound', color: 'bg-[#EC4899]', enabled: false, order: 11 },
+  { id: 'configuracoes', type: 'configuracoes', label: 'Configurações', icon: 'Settings', color: 'bg-[#64748B]', enabled: false, order: 12 },
+  { id: 'ajustes-ponto', type: 'ajustes-ponto', label: 'Ajustes de Ponto', icon: 'Edit3', color: 'bg-[#F97316]', enabled: false, order: 13 },
+  { id: 'relatorios', type: 'relatorios', label: 'Relatórios', icon: 'FileBarChart2', color: 'bg-[#14B8A6]', enabled: false, order: 14 },
   // Cards de métricas
   { id: 'card-banco-horas', type: 'card-banco-horas', label: 'Banco de Horas', icon: 'Clock', color: 'bg-[#10B981]', enabled: true, order: 15 },
   { id: 'card-solicitacoes', type: 'card-solicitacoes', label: 'Solicitações', icon: 'FileText', color: 'bg-[#F59E0B]', enabled: true, order: 16 },
@@ -81,7 +81,9 @@ export const useDashboardStore = create<DashboardState>()(
         set((state) => ({
           widgets: state.widgets.map((w) => (w.id === id ? { ...w, enabled: !w.enabled } : w)),
         })),
-      reorderWidgets: (widgets) => set({ widgets }),
+      reorderWidgets: (widgets) => {
+        set({ widgets });
+      },
       updateWidgetPosition: (id, position) =>
         set((state) => ({
           widgets: state.widgets.map((w) => (w.id === id ? { ...w, gridPosition: position } : w)),
@@ -107,7 +109,7 @@ export const useDashboardStore = create<DashboardState>()(
         const updatedWidgets = state.widgets.map(widget => {
           const defaultWidget = defaultWidgetsMap.get(widget.id);
           if (defaultWidget) {
-            // Preservar apenas enabled e order do localStorage, atualizar tudo mais
+            // Preservar enabled, order e gridPosition do localStorage, atualizar apenas label/icon/color/type
             return {
               ...defaultWidget,
               enabled: widget.enabled,
@@ -117,11 +119,13 @@ export const useDashboardStore = create<DashboardState>()(
           }
           return widget;
         });
-        
-        // Adicionar widgets faltantes
+
+        // Adicionar widgets faltantes (com ordem sequencial após o último)
         const existingIds = new Set(updatedWidgets.map(w => w.id));
-        const missingWidgets = defaultWidgets.filter(w => !existingIds.has(w.id));
-        
+        const lastOrder = updatedWidgets.length > 0 ? Math.max(...updatedWidgets.map(w => w.order)) : 0;
+        let orderCounter = lastOrder + 1;
+        const missingWidgets = defaultWidgets.filter(w => !existingIds.has(w.id)).map(w => ({ ...w, order: orderCounter++ }));
+
         state.widgets = [...updatedWidgets, ...missingWidgets].sort((a, b) => a.order - b.order);
       }
     }
