@@ -9,7 +9,12 @@ import {
   UserCog,
   Settings,
   LogOut,
-  X
+  X,
+  Calendar,
+  MessageSquareText,
+  BarChart3,
+  ClipboardCheck,
+  User
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -20,11 +25,17 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: Home },
   { label: 'Ponto', path: '/ponto', icon: Clock },
   { label: 'Solicitações', path: '/solicitacoes', icon: FileText },
+  { label: 'Solicitações Ponto', path: '/solicitacoes-ponto', icon: Clock },
+  { label: 'Calendário', path: '/calendario', icon: Calendar },
+  { label: 'Chat', path: '/chat', icon: MessageSquareText },
   { label: 'OKRs', path: '/okrs', icon: Target },
+  { label: 'Avaliações', path: '/avaliacoes', icon: ClipboardCheck },
   { label: 'Feedbacks', path: '/feedbacks', icon: MessageCircle },
   { label: 'Mural', path: '/mural', icon: MessageSquare },
+  { label: 'Relatórios', path: '/relatorios', icon: BarChart3 },
   { label: 'Clientes', path: '/clientes', icon: Users },
   { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
+  { label: 'Meu Perfil', path: '/perfil', icon: User },
   { label: 'Configurações', path: '/configuracoes', icon: Settings },
 ];
 
