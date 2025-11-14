@@ -130,7 +130,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 md:left-[260px] h-16 bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 z-30 transition-colors">
+    <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex-shrink-0 z-30 transition-colors">
       <div className="h-full px-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button

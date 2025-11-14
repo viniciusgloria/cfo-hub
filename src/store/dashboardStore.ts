@@ -102,6 +102,15 @@ export const useDashboardStore = create<DashboardState>()(
           state.widgets = defaultWidgets;
           return;
         }
+
+        // Remover duplicatas carregadas do localStorage por label (normalizado), mantendo a primeira ocorrência
+        const seenLabels = new Set<string>();
+        state.widgets = state.widgets.filter(w => {
+          const label = (w.label || '').toString().toLowerCase().trim();
+          if (seenLabels.has(label)) return false;
+          seenLabels.add(label);
+          return true;
+        });
         
         // Atualizar widgets existentes com novos labels e ícones
         const defaultWidgetsMap = new Map(defaultWidgets.map(w => [w.id, w]));
@@ -127,6 +136,17 @@ export const useDashboardStore = create<DashboardState>()(
         const missingWidgets = defaultWidgets.filter(w => !existingIds.has(w.id)).map(w => ({ ...w, order: orderCounter++ }));
 
         state.widgets = [...updatedWidgets, ...missingWidgets].sort((a, b) => a.order - b.order);
+
+        // Sobrescrever o localStorage com a versão deduplicada/normalizada
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            const key = 'cfo:dashboard';
+            const payload = JSON.stringify({ state: { widgets: state.widgets } });
+            window.localStorage.setItem(key, payload);
+          }
+        } catch (e) {
+          // falhar silenciosamente — não bloquear a reidratação
+        }
       }
     }
   )

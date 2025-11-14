@@ -46,6 +46,11 @@ export function DashboardCustomizer({
 
   // Sempre ordenar widgets pelo campo 'order' antes de renderizar e manipular
   const orderedWidgets = [...widgets].sort((a, b) => a.order - b.order);
+  // Remover possíveis duplicatas por label (normalizado), preservando a primeira ocorrência e a ordem
+  const uniqueWidgets = orderedWidgets.filter((w, idx, arr) => {
+    const label = (w.label || '').toString().toLowerCase().trim();
+    return arr.findIndex(x => (x.label || '').toString().toLowerCase().trim() === label) === idx;
+  });
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -134,7 +139,7 @@ export function DashboardCustomizer({
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-2">
-            {orderedWidgets.map((widget, index) => {
+            {uniqueWidgets.map((widget, index) => {
               const Icon = iconMap[widget.icon];
               const isDragging = draggedIndex === index;
               const isDragOver = dragOverIndex === index;

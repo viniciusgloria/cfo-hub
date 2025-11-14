@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef, ChangeEvent, useMemo } from 'react';
-import { usePageTitle } from '../hooks/usePageTitle';
 import { Plus, ImageIcon, Filter } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 // Input removed (not used)
-import { useMuralStore, /* PostType (type) is imported below */ } from '../store/muralStore';
+import { useMuralStore } from '../store/muralStore';
 import { PostCard } from '../components/PostCard';
 import toast from 'react-hot-toast';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
@@ -14,7 +13,6 @@ import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { useNotificacoesStore } from '../store/notificacoesStore';
 
 export function Mural() {
-  usePageTitle('Mural');
   const posts = useMuralStore((s) => s.posts);
   const filter = useMuralStore((s) => s.filter);
   const setFilter = useMuralStore((s) => s.setFilter);
@@ -25,8 +23,7 @@ export function Mural() {
   const addNotificacao = useNotificacoesStore((s) => s.adicionarNotificacao);
 
   const [open, setOpen] = useState(false);
-  // ensure we use the canonical PostType from the mural store
-  const [type, setType] = useState<any>('anuncio');
+  const [type, setType] = useState<'anuncio'|'feedback'|'atualizacao'|'comemoracao'>('anuncio');
   const [content, setContent] = useState('');
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
@@ -346,3 +343,7 @@ export function Mural() {
     </div>
   );
 }
+
+
+
+
