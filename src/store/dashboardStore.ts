@@ -57,7 +57,7 @@ const defaultWidgets: Widget[] = [
   { id: 'grafico-horas', type: 'grafico-horas', label: 'Gráfico de Horas', icon: 'BarChart', color: 'bg-[#6366F1]', enabled: false, order: 5 },
   { id: 'solicitacoes-pendentes', type: 'solicitacoes-pendentes', label: 'Solicitações Pendentes', icon: 'FileText', color: 'bg-[#EF4444]', enabled: false, order: 6 },
   { id: 'reunioes-hoje', type: 'reunioes-hoje', label: 'Reuniões Hoje', icon: 'Users', color: 'bg-[#3B82F6]', enabled: false, order: 7 },
-  { id: 'okrs', type: 'okrs', label: 'Meus OKRs', icon: 'Target', color: 'bg-[#8B5CF6]', enabled: false, order: 8 },
+  { id: 'okrs', type: 'okrs', label: 'Meu Desenvolvimento', icon: 'Target', color: 'bg-[#8B5CF6]', enabled: false, order: 8 },
   { id: 'feedbacks', type: 'feedbacks', label: 'Feedbacks', icon: 'MessageCircle', color: 'bg-[#F59E0B]', enabled: false, order: 9 },
   { id: 'clientes', type: 'clientes', label: 'Clientes', icon: 'Briefcase', color: 'bg-[#6366F1]', enabled: false, order: 10 },
   { id: 'colaboradores', type: 'colaboradores', label: 'Colaboradores', icon: 'UsersRound', color: 'bg-[#EC4899]', enabled: false, order: 11 },

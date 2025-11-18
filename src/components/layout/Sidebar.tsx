@@ -41,7 +41,7 @@ const navItemsGestor: NavItem[] = [
   { label: 'Avaliações', path: '/avaliacoes', icon: Award },
   { label: 'Aprovações Ponto', path: '/solicitacoes-ponto', icon: ClipboardCheck },
   { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
-  { label: 'OKRs', path: '/okrs', icon: Target },
+  { label: 'Desenvolvimento', path: '/okrs', icon: Target },
   { label: 'Relatórios', path: '/relatorios', icon: BarChart },
 ];
 

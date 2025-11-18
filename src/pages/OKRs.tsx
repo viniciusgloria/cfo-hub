@@ -202,7 +202,7 @@ export function OKRs() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">OKRs</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Desenvolvimento</h1>
         <div className="flex gap-2">
           <select
             value={trimestre}
@@ -216,7 +216,7 @@ export function OKRs() {
           </select>
           <Button onClick={() => setIsNovoModal(true)} className="flex items-center gap-2">
             <Plus size={18} />
-            Novo OKR
+            Nova Meta
           </Button>
         </div>
       </div>
@@ -229,7 +229,7 @@ export function OKRs() {
               <SkeletonCard />
             </div>
           ) : okrsFiltrados.length === 0 ? (
-            <EmptyState title="Nenhum objetivo criado" description="Crie um OKR para começar a acompanhar metas." cta={<Button onClick={() => setIsNovoModal(true)}>Novo OKR</Button>} />
+            <EmptyState title="Nenhum objetivo criado" description="Crie uma meta para começar a acompanhar seu desenvolvimento." cta={<Button onClick={() => setIsNovoModal(true)}>Nova Meta</Button>} />
           ) : (
             okrsFiltrados.map((okr) => {
               return (
@@ -346,7 +346,7 @@ export function OKRs() {
           setIsNovoModal(false);
           resetForm();
         }}
-        title="Criar Novo OKR"
+        title="Criar Nova Meta"
       >
         <div className="space-y-4">
           <div>
