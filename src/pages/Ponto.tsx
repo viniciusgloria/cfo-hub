@@ -358,28 +358,34 @@ export function Ponto() {
           <h3 className="text-2xl font-bold">Controle de Ponto</h3>
         </Card>
         <div className="flex flex-col gap-6 md:flex-row md:gap-6">
-          <Card className="md:w-[30%] w-full p-8 bg-gradient-to-br from-gray-50 to-green-50 flex flex-col justify-center md:h-[420px]">
-            <div className="flex flex-col items-center gap-6 h-full justify-center">
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">Horário Atual</p>
-                <p className="text-5xl font-bold text-[#1F2937] font-mono">{time || '00:00:00'}</p>
+          <Card className="md:w-[30%] w-full p-8 bg-white flex flex-col md:h-[420px]">
+            <div className="flex flex-col gap-6 h-full">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-800">Horário Atual</h3>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
-                <AlertCircle size={18} className="text-green-700" />
-                <p className="text-sm text-green-700 font-medium">{statusHoje}</p>
-              </div>
-              <div className="flex gap-3 w-full max-w-xs">
-                <Button variant="primary" fullWidth onClick={() => handleRegistro('entrada')}>
-                  Registrar Entrada
-                </Button>
-                <Button
-                  variant="outline"
-                  fullWidth
-                  onClick={() => handleRegistro('saida')}
-                  className="border-red-300 text-red-600 hover:bg-red-50"
-                >
-                  Registrar Saída
-                </Button>
+
+              <div className="flex flex-col items-center gap-6 flex-1 justify-center">
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-xl font-bold text-[#1F2937] font-mono mb-0">{`${['dom','seg','ter','qua','qui','sex','sáb'][new Date().getDay()]}, ${new Date().toLocaleDateString('pt-BR')}`}</p>
+                  <p className="text-5xl font-bold text-[#1F2937] font-mono">{time || '00:00:00'}</p>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
+                  <AlertCircle size={18} className="text-green-700" />
+                  <p className="text-sm text-green-700 font-medium">{statusHoje}</p>
+                </div>
+                <div className="flex gap-3 w-full max-w-xs">
+                  <Button variant="primary" fullWidth onClick={() => handleRegistro('entrada')}>
+                    Registrar Entrada
+                  </Button>
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={() => handleRegistro('saida')}
+                    className="border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    Registrar<br />Saída
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>

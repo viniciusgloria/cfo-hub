@@ -134,10 +134,9 @@ export function Avaliacoes() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Avaliações de Desempenho</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie avaliações periódicas da equipe</p>
-      </div>
+      <Card className="p-4 flex items-center justify-between">
+        <h3 className="text-2xl font-bold">Avaliações de Desempenho</h3>
+      </Card>
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

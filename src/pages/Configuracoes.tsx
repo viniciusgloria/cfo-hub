@@ -118,9 +118,10 @@ export function Configuracoes() {
 
   return (
     <div className="p-6">
+      <Card className="p-4 flex items-center justify-between mb-6">
+        <h3 className="text-2xl font-bold">Configurações</h3>
+      </Card>
       <Card>
-        <h2 className="text-lg font-semibold">Configurações</h2>
-
         <Tabs
           tabs={[
             { id: 'empresa', label: 'Empresa' },

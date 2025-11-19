@@ -150,8 +150,7 @@ export function Mural() {
     <div className="space-y-6">
       <Card className="p-4 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Mural</h3>
-          <p className="text-sm text-gray-500">Veja as últimas publicações e novidades da equipe</p>
+          <h3 className="text-2xl font-bold">Mural</h3>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-md">

@@ -84,12 +84,9 @@ export function Chat() {
 
   return (
     <div className="h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Chat</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Converse com seus colegas em tempo real</p>
-        </div>
-      </div>
+      <Card className="p-4 flex items-center justify-between mb-6">
+        <h3 className="text-2xl font-bold">Chat</h3>
+      </Card>
 
       <div className="grid grid-cols-12 gap-4 h-[calc(100%-5rem)]">
         {/* Lista de conversas */}

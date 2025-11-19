@@ -92,7 +92,9 @@ export function Feedbacks() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Feedbacks</h1>
+      <Card className="p-4 flex items-center justify-between">
+        <h3 className="text-2xl font-bold">Feedbacks</h3>
+      </Card>
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'recebidos' && (

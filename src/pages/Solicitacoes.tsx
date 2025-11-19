@@ -149,8 +149,8 @@ export function Solicitacoes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Solicitações</h1>
+      <Card className="p-4 flex items-center justify-between">
+        <h3 className="text-2xl font-bold">Solicitações</h3>
         <Button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2"
@@ -158,7 +158,7 @@ export function Solicitacoes() {
           <Plus size={18} />
           Nova Solicitação
         </Button>
-      </div>
+      </Card>
 
         {selectedIds.length > 0 && (
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded">

@@ -156,11 +156,8 @@ export function Calendario() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Calendário</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Gerencie reuniões, eventos e prazos</p>
-        </div>
+      <Card className="p-4 flex items-center justify-between">
+        <h3 className="text-2xl font-bold">Calendário</h3>
         <div className="flex gap-3">
           <Button onClick={() => setReservaModalOpen(true)} variant="outline" className="flex items-center gap-2">
             <CalendarIcon size={18} />
@@ -171,7 +168,7 @@ export function Calendario() {
             Novo Evento
           </Button>
         </div>
-      </div>
+      </Card>
 
       <Card className="p-6">
         {/* Navegação do mês */}

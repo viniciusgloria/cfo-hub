@@ -157,7 +157,7 @@ export function Dashboard() {
     <div className="space-y-6">
       <Card className="p-4 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Dashboard</h3>
+          <h3 className="text-2xl font-bold">Dashboard</h3>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={startTour} variant="outline" className="flex items-center gap-2">

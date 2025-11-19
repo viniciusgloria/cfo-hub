@@ -100,7 +100,7 @@ export function SolicitacoesPonto() {
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors text-gray-800 dark:text-gray-100 p-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Aprovações de Ponto</h1>
+        <h1 className="text-2xl font-bold">Aprovações de Ponto</h1>
         {isAprovador && selectedIds.length > 0 && (
           <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg dark:bg-transparent">
             <span className="text-sm text-gray-700 dark:text-white">{selectedIds.length} selecionada(s)</span>

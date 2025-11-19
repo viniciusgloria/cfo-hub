@@ -139,10 +139,9 @@ export function Relatorios() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Relatórios</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Exporte dados do sistema em diversos formatos</p>
-      </div>
+      <Card className="p-4 flex items-center justify-between">
+        <h3 className="text-2xl font-bold">Relatórios</h3>
+      </Card>
 
       {/* Seleção de tipo de relatório */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
