@@ -66,6 +66,9 @@ export function useAttachmentUploader() {
   const [attachments, setAttachments] = useState<UploadAttachment[]>([]);
   const controllersRef = useRef(new Map<string, AbortController>());
 
+  const MAX_BYTES = 3 * 1024 * 1024; // 3MB per user request
+  const ALLOWED = new Set(['application/pdf', 'image/png', 'image/jpeg']);
+
   const patchAttachment = useCallback((id: string, patch: Partial<UploadAttachment>) => {
     setAttachments((prev) => {
       const idx = prev.findIndex((item) => item.id === id);
@@ -80,6 +83,39 @@ export function useAttachmentUploader() {
     async (file: File) => {
       const id = randomId();
       const dataUrl = await fileToDataUrl(file);
+      // validate type and size before adding
+      const mime = file.type || 'application/octet-stream';
+      if (!ALLOWED.has(mime)) {
+        const initialErr: UploadAttachment = {
+          id,
+          name: file.name,
+          mimeType: mime,
+          size: file.size,
+          dataUrl,
+          remoteUrl: '',
+          progress: 0,
+          status: 'error',
+          error: 'Tipo de arquivo não permitido',
+        };
+        setAttachments((prev) => [...prev, initialErr]);
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        const initialErr: UploadAttachment = {
+          id,
+          name: file.name,
+          mimeType: mime,
+          size: file.size,
+          dataUrl,
+          remoteUrl: '',
+          progress: 0,
+          status: 'error',
+          error: 'Arquivo excede 3MB',
+        };
+        setAttachments((prev) => [...prev, initialErr]);
+        return;
+      }
+
       const initial: UploadAttachment = {
         id,
         name: file.name,
@@ -89,6 +125,7 @@ export function useAttachmentUploader() {
         remoteUrl: '',
         progress: 0,
         status: 'uploading',
+        error: undefined,
       };
 
       setAttachments((prev) => [...prev, initial]);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Attachment, User } from '../types';
+import { useNotificacoesStore } from './notificacoesStore';
 
 export type TipoSolicitacaoPonto = 'ajuste' | 'atestado';
 export type AlvoAjuste = 'entrada' | 'saida';
@@ -42,6 +43,18 @@ export const useAjustesPontoStore = create<AjustesPontoState>()(
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ solicitacoes: [novo, ...state.solicitacoes] }));
+        try {
+          useNotificacoesStore.getState().adicionarNotificacao({
+            tipo: 'nova_solicitacao_gestor',
+            titulo: 'Nova solicitação de ponto',
+            mensagem: `${novo.colaboradorNome} enviou uma solicitação de ${novo.tipo === 'ajuste' ? 'ajuste' : 'atestado'} para ${novo.data}`,
+            link: '/solicitacoes',
+            icone: 'Clock',
+            cor: 'text-blue-600',
+          });
+        } catch (e) {
+          // ignore notification errors in client
+        }
         return id;
       },
       atualizarStatus: (id, status, decididoPor) =>

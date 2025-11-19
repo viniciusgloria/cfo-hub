@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, createElement } from 'react';
 import { Bell, Menu, X, CheckCircle, MessageSquare, Clock, User, Settings, LogOut, Search, Moon, Sun, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Button } from '../ui/Button';
+import { resetAll } from '../../store/resetHelpers';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificacoesStore } from '../../store/notificacoesStore';
 import { useThemeStore } from '../../store/themeStore';
@@ -153,6 +155,25 @@ export function Header({ title, onMenuClick }: HeaderProps) {
           >
             {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
           </button>
+
+          {import.meta.env.DEV && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  resetAll();
+                  toast.success('Stores resetados — recarregando...');
+                } catch (e) {
+                  toast.error('Erro ao resetar stores');
+                }
+                setTimeout(() => location.reload(), 200);
+              }}
+              className="text-sm"
+              title="Resetar stores (dev)"
+            >
+              Reset Dev
+            </Button>
+          )}
 
           {/* Busca Global */}
           <button

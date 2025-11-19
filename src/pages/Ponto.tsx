@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import FilterPill from '../components/ui/FilterPill';
 import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -9,8 +10,8 @@ import { Card } from '../components/ui/Card';
 import { SolicitacaoPontoModal } from '../components/SolicitacaoPontoModal';
 import { AtestadoModal } from '../components/AtestadoModal';
 import { EscolhaTipoSolicitacaoModal } from '../components/EscolhaTipoSolicitacaoModal';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { usePontoStore } from '../store/pontoStore';
-import { resetAll } from '../store/resetHelpers';
 import { useAuthStore } from '../store/authStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { useReservasStore } from '../store/reservasStore';
@@ -22,7 +23,7 @@ type ViewMode = 'mensal' | 'semanal';
 export function Ponto() {
   usePageTitle('Controle de Ponto Eletrônico');
   const [time, setTime] = useState<string>('');
-  const [mes, setMes] = useState('Novembro 2024');
+  const [mes, setMes] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('mensal');
   const [semanaOffset, setSemanaOffset] = useState(0); // 0 = semana atual, -1 = semana passada, etc
   const [modalAberto, setModalAberto] = useState(false);
@@ -55,6 +56,67 @@ export function Ponto() {
 
   const { reservas } = useReservasStore();
   const { posts } = useMuralStore();
+
+  // Helper: parse date strings in registros (expecting DD/MM/YYYY or ISO)
+  const parseRegistroDate = (s: string) => {
+    if (!s) return null;
+    // Try ISO YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s + 'T00:00:00');
+    // BR format DD/MM/YYYY or DD/MM/YYYY HH:MM
+    const parts = s.split(' ')[0].split('/');
+    if (parts.length === 3) {
+      const [dd, mm, yyyy] = parts;
+      return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    }
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // Build months available from registros in format { key: 'YYYY-MM', label: 'MMMM YYYY' }
+  const mesesDisponiveis = (() => {
+    try {
+      const map = new Map<string, { key: string; label: string; date: Date }>();
+      (registros || []).forEach((r: any) => {
+        const d = parseRegistroDate(r.data);
+        if (!d) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!map.has(key)) {
+          const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          map.set(key, { key, label, date: d });
+        }
+      });
+      // sort descending by date (most recent first)
+      return Array.from(map.values()).sort((a, b) => b.date.getTime() - a.date.getTime()).map((v) => ({ key: v.key, label: v.label }));
+    } catch (e) {
+      return [] as Array<{ key: string; label: string }>;
+    }
+  })();
+
+  // Ensure default mes selection if not set
+  useEffect(() => {
+    if (!mes) {
+      if (mesesDisponiveis.length > 0) {
+        setMes(mesesDisponiveis[0].key);
+      } else {
+        // default to current month
+        const now = new Date();
+        setMes(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+      }
+    } else {
+      // if current mes not in available months and there are available months, switch to first available
+      if (mesesDisponiveis.length > 0 && !mesesDisponiveis.find((m) => m.key === mes)) {
+        setMes(mesesDisponiveis[0].key);
+      }
+    }
+  }, [registros]);
+
+  // Filter registros by selected month
+  const registrosFiltrados = (registros || []).filter((r: any) => {
+    const d = parseRegistroDate(r.data);
+    if (!d) return false;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return key === mes;
+  });
 
   useEffect(() => {
     const parseBRDate = (s: string) => {
@@ -666,33 +728,22 @@ export function Ponto() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-800">Espelho de Ponto</h3>
           <div className="flex items-center gap-3">
-            <select
-              value={mes}
-              onChange={(e) => setMes(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
-            >
-              <option>Novembro 2024</option>
-              <option>Outubro 2024</option>
-              <option>Setembro 2024</option>
-            </select>
-            {import.meta.env.DEV && (
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    resetAll();
-                    toast.success('Stores resetados — recarregando...');
-                  } catch (e) {
-                    toast.error('Erro ao resetar stores');
-                  }
-                  setTimeout(() => location.reload(), 200);
-                }}
-                className="text-sm"
-                title="Resetar stores (dev)"
-              >
-                Reset Dev
-              </Button>
-            )}
+            {(() => {
+              const now = new Date();
+              const nowKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+              const nowLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+              const options = mesesDisponiveis.length > 0 ? mesesDisponiveis.map((m) => ({ value: m.key, label: m.label })) : [{ value: nowKey, label: nowLabel }];
+              return (
+                <FilterPill
+                  icon={<Filter size={16} />}
+                  value={mes}
+                  onChange={(e) => setMes(e.target.value)}
+                  options={options as any}
+                  aria-label="Selecionar mês"
+                />
+              );
+            })()}
+            {/* Reset Dev moved to Header (dev only) */}
             <Button
               variant="secondary"
               onClick={exportCSV}
@@ -705,7 +756,7 @@ export function Ponto() {
           </div>
         </div>
 
-        {registros.length === 0 ? (
+        {registrosFiltrados.length === 0 ? (
           <EmptyState
             title="Nenhum registro este mês"
             description="Ainda não há registros de ponto para este mês."
@@ -737,7 +788,7 @@ export function Ponto() {
                   </tr>
                 </thead>
                 <tbody>
-                  {registros.map((reg) => {
+                  {registrosFiltrados.map((reg) => {
                     const entradaPunch = (reg.punches || []).find((p: any) => p.type === 'entrada');
                     const saidaPunch = ([...(reg.punches || [])].reverse() as any[]).find((p) => p.type === 'saida');
                     const entrada = entradaPunch?.hhmm ?? '--:--';
@@ -790,7 +841,7 @@ export function Ponto() {
                         <td className="p-3">
                           <button
                             onClick={() => handleSolicitarAjuste(reg.data)}
-                            className="text-blue-600 hover:underline text-sm"
+                            className="text-green-600 font-bold hover:underline text-sm"
                             title="Solicitar ajuste ou anexar atestado"
                           >
                             Solicitar Ajuste
@@ -806,29 +857,31 @@ export function Ponto() {
         )}
       </Card>
       </div>
-      <SolicitacaoPontoModal 
-        isOpen={modalAberto}
-        onClose={() => setModalAberto(false)}
-        data={dataSelecionada}
-        tipo="ajuste"
-      />
-      <AtestadoModal 
-        isOpen={atestadoAberto}
-        onClose={() => setAtestadoAberto(false)}
-        data={dataSelecionada}
-      />
-      <EscolhaTipoSolicitacaoModal 
-        isOpen={escolhaAberta}
-        onClose={() => setEscolhaAberta(false)}
-        onEscolher={(tipo: 'ajuste' | 'atestado') => {
-          setEscolhaAberta(false);
-          if (tipo === 'ajuste') {
-            setModalAberto(true);
-          } else {
-            setAtestadoAberto(true);
-          }
-        }}
-      />
+      <ErrorBoundary>
+        <SolicitacaoPontoModal 
+          isOpen={modalAberto}
+          onClose={() => setModalAberto(false)}
+          data={dataSelecionada}
+          tipo="ajuste"
+        />
+        <AtestadoModal 
+          isOpen={atestadoAberto}
+          onClose={() => setAtestadoAberto(false)}
+          data={dataSelecionada}
+        />
+        <EscolhaTipoSolicitacaoModal 
+          isOpen={escolhaAberta}
+          onClose={() => setEscolhaAberta(false)}
+          onEscolher={(tipo: 'ajuste' | 'atestado') => {
+            setEscolhaAberta(false);
+            if (tipo === 'ajuste') {
+              setModalAberto(true);
+            } else {
+              setAtestadoAberto(true);
+            }
+          }}
+        />
+      </ErrorBoundary>
     </>
   );
 }

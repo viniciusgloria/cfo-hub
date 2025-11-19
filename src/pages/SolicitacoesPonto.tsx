@@ -7,10 +7,13 @@ import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { ApprovarSolicitacaoModal } from '../components/ApprovarSolicitacaoModal';
 import { Avatar } from '../components/Avatar';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
 import { useAjustesPontoStore } from '../store/ajustesPontoStore';
 import { useAuthStore } from '../store/authStore';
+import { usePontoStore } from '../store/pontoStore';
+import { useNotificacoesStore } from '../store/notificacoesStore';
 import toast from 'react-hot-toast';
 import { Attachment } from '../types';
 
@@ -21,6 +24,7 @@ export function SolicitacoesPonto() {
   usePageTitle('Aprovações de Ponto');
   const [activeTab, setActiveTab] = useState('todas');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [approvarOpen, setApprovarOpen] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [actionType, setActionType] = useState<'aprovar' | 'rejeitar'>('aprovar');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -29,6 +33,8 @@ export function SolicitacoesPonto() {
   
   const { solicitacoes, atualizarStatus } = useAjustesPontoStore();
   const { user } = useAuthStore();
+  const { aplicarAjusteAprovado } = usePontoStore();
+  const { adicionarNotificacao } = useNotificacoesStore();
 
   useEffect(() => {
     const t = setTimeout(() => setIsLoading(false), 300);
@@ -52,7 +58,7 @@ export function SolicitacoesPonto() {
   const handleAprovar = (id: string) => {
     setActionId(id);
     setActionType('aprovar');
-    setConfirmOpen(true);
+    setApprovarOpen(true);
   };
 
   const handleRejeitar = (id: string) => {
@@ -63,17 +69,52 @@ export function SolicitacoesPonto() {
 
   const confirmAction = (reason?: string) => {
     if (!actionId || !user) return;
+    // This confirmAction is used for rejection only in the current flow
+    if (actionType === 'rejeitar') {
+      const status = 'rejeitada';
+      const decididoPor = { id: user.id, name: user.name, role: user.role };
+      atualizarStatus(actionId, status, decididoPor);
+      // add notification to requester
+      try {
+        useNotificacoesStore.getState().adicionarNotificacao({
+          tipo: 'solicitacao_rejeitada',
+          titulo: 'Solicitação de Ponto Rejeitada',
+          mensagem: `Sua solicitação foi rejeitada.`,
+          link: '/solicitacoes',
+          icone: 'XCircle',
+          cor: 'text-red-600',
+        });
+      } catch (e) {}
+      toast.error(`Solicitação rejeitada${reason ? `: ${reason}` : ''}`);
+      setConfirmOpen(false);
+      setActionId(null);
+    }
+  };
 
-    const status = actionType === 'aprovar' ? 'aprovada' : 'rejeitada';
+  const handleApproveConfirmed = (id: string, horarioFinal?: string, observacao?: string) => {
+    if (!id || !user) return;
     const decididoPor = { id: user.id, name: user.name, role: user.role };
-    
-    atualizarStatus(actionId, status, decididoPor);
-    
-    toast[actionType === 'aprovar' ? 'success' : 'error'](
-      `Solicitação ${actionType === 'aprovar' ? 'aprovada' : 'rejeitada'}${reason ? `: ${reason}` : ''}`
-    );
-    
-    setConfirmOpen(false);
+    // apply ajustment if needed
+    const sol = solicitacoes.find((s) => s.id === id);
+    if (sol) {
+      if (sol.tipo === 'ajuste' && horarioFinal) {
+        aplicarAjusteAprovado({ data: sol.data, alvo: sol.alvo, horarioNovo: horarioFinal });
+      }
+      atualizarStatus(id, 'aprovada', decididoPor);
+      try {
+        adicionarNotificacao({
+          tipo: 'ajuste_ponto_aprovado',
+          titulo: 'Solicitação atendida',
+          mensagem: `Sua solicitação foi aprovada e os dados foram atualizados.`,
+          link: '/ponto',
+          icone: 'CheckCircle',
+          cor: 'text-green-600',
+        });
+      } catch (e) {}
+      // simulate email send (console log)
+      console.log(`Email enviado para ${sol.colaboradorEmail}: Solicitação aprovada`);
+    }
+    setApprovarOpen(false);
     setActionId(null);
   };
 
@@ -249,6 +290,15 @@ export function SolicitacoesPonto() {
         onClose={() => setConfirmOpen(false)}
         onConfirm={confirmAction}
         title={actionType === 'aprovar' ? 'Confirmar aprovação' : 'Confirmar rejeição'}
+      />
+
+      <ApprovarSolicitacaoModal
+        isOpen={approvarOpen}
+        onClose={() => setApprovarOpen(false)}
+        solicitacao={actionId ? solicitacoes.find((s) => s.id === actionId) ?? null : null}
+        onConfirm={(horario, obs) => {
+          if (actionId) handleApproveConfirmed(actionId, horario, obs);
+        }}
       />
 
       {previewAttachment && (

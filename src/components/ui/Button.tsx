@@ -19,7 +19,7 @@ export function Button({
   const baseClasses = 'px-4 py-2 rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants: Record<string, string> = {
-    primary: 'bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]',
+    primary: 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-600',
     secondary: 'bg-[#1F2937] text-white hover:bg-[#374151] focus-visible:ring-[#1F2937]',
     intervalStart: 'bg-amber-500 text-white hover:bg-amber-600 focus-visible:ring-amber-500',
     intervalEnd: 'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-600',

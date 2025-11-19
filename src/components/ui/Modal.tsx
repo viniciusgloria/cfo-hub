@@ -4,17 +4,15 @@ import { X } from 'lucide-react';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
+  subtitle?: string;
   children: ReactNode;
   className?: string;
 }
 
-export function Modal({ isOpen, onClose, title, children, className = '' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, subtitle, children, className = '' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
-
-  if (!isOpen) return null;
-
   useEffect(() => {
     if (typeof document === 'undefined') return;
     lastActiveElementRef.current = document.activeElement as HTMLElement | null;
@@ -22,13 +20,22 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    // focus first element marked with [autofocus], otherwise first focusable, otherwise the close button
+    // focus first element marked with [autofocus], otherwise first focusable, otherwise focus the dialog itself
     const auto = dialog.querySelector('[autofocus]') as HTMLElement | null;
     const focusable = dialog.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
     );
     const first = auto || (focusable.length ? focusable[0] : null);
-    if (first) first.focus();
+    if (first) {
+      first.focus();
+    } else {
+      // ensure the dialog is focusable and focus it as a fallback
+      try {
+        dialog.focus();
+      } catch (e) {
+        /* ignore */
+      }
+    }
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -43,6 +50,8 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
         ));
         if (nodes.length === 0) {
           e.preventDefault();
+          // fallback: focus the dialog container so keyboard users still have context
+          try { dialog.focus(); } catch (err) { /* ignore */ }
           return;
         }
         const firstNode = nodes[0];
@@ -71,6 +80,8 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
     };
   }, [onClose]);
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
@@ -78,11 +89,16 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
+        aria-describedby="modal-content"
         ref={dialogRef}
+        tabIndex={-1}
         className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 ${className}`}
       >
-        <div className="sticky top-0 flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <h2 id="modal-title" className="text-xl font-semibold text-gray-800 dark:text-gray-100">{title}</h2>
+        <div className="sticky top-0 flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div>
+            <h2 id="modal-title" className="text-xl font-semibold text-gray-800 dark:text-gray-100">{title}</h2>
+            {subtitle && <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{subtitle}</div>}
+          </div>
           <button
             onClick={onClose}
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
@@ -91,7 +107,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
             <X size={24} />
           </button>
         </div>
-        <div className="p-6 text-gray-800 dark:text-gray-100">
+        <div id="modal-content" className="p-4 sm:p-6 text-gray-800 dark:text-gray-100">
           {children}
         </div>
       </div>

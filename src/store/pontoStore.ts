@@ -321,6 +321,66 @@ export const usePontoStore = create<PontoState>()(
         }
       },
 
+      aplicarAjusteAprovado: ({ data, alvo, horarioNovo }: { data: string; alvo?: 'entrada' | 'saida'; horarioNovo?: string }) => {
+        if (!data || !horarioNovo) return;
+        set((state) => {
+          const registros = [...state.registros];
+          const idx = registros.findIndex((r) => r.data === data);
+          if (idx >= 0) {
+            const registro = { ...registros[idx] };
+            const punches = [...registro.punches];
+            // find target punch
+            const targetIdx = punches.findIndex((p) => p.type === (alvo || 'entrada'));
+            if (targetIdx >= 0) {
+              // parse horarioNovo HH:MM and build new ts based on date
+              const parts = horarioNovo.split(':');
+              const [hh, mm] = parts.map((x) => Number(x));
+              const [dd, mmBR, yyyy] = registro.data.split('/').map((s) => Number(s));
+              const dateObj = new Date(yyyy, mmBR - 1, dd, hh, mm);
+              const newTs = dateObj.getTime();
+              punches[targetIdx] = { ...punches[targetIdx], ts: newTs, hhmm: horarioNovo };
+            }
+
+            // rebuild intervals and totals
+            const intervals: Intervalo[] = [];
+            const stack: number[] = [];
+            punches.forEach((p) => {
+              if (p.type === 'inicio_intervalo') stack.push(p.ts);
+              if (p.type === 'fim_intervalo' && stack.length) {
+                const inicioTs = stack.pop() as number;
+                const fimTs = p.ts;
+                intervals.push({ inicioTs, fimTs, duracaoMinutos: Math.max(0, Math.round((fimTs - inicioTs) / 60000)) });
+              }
+            });
+
+            // recompute total based on first entrada and last saida
+            const entradaPunch = punches.find((p) => p.type === 'entrada');
+            const saidaPunch = ([...punches].reverse() as any[]).find((p) => p.type === 'saida');
+            let totalMinutos: number | undefined = undefined;
+            if (entradaPunch && saidaPunch) {
+              const dur = Math.max(0, Math.round((saidaPunch.ts - entradaPunch.ts) / 60000));
+              const intervalSum = intervals.reduce((s, it) => s + (it.duracaoMinutos || 0), 0);
+              totalMinutos = Math.max(0, dur - intervalSum);
+            }
+
+            registro.punches = punches;
+            registro.intervals = intervals;
+            registro.totalMinutos = totalMinutos;
+            registro.updatedAt = Date.now();
+            registros[idx] = registro;
+
+            // recompute bancoHoras for all registros
+            const expected = DEFAULT_EXPECTED_PER_DAY;
+            const totals = registros.map((r) => r.totalMinutos ?? 0).filter((v) => v > 0);
+            const sumTotals = totals.reduce((a, b) => a + b, 0);
+            const bankMins = sumTotals - expected * (totals.length || 1);
+
+            return { registros, bancoHoras: formatBankMinutes(bankMins) } as any;
+          }
+          return { registros: state.registros } as any;
+        });
+      },
+
       reset: () => set({ registros: [], feriadosISO: [], isProcessing: false, statusHoje: 'Registre sua entrada!' }),
     }),
     { name: 'cfo:ponto:v2' }

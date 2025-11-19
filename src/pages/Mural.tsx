@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, ChangeEvent, useMemo } from 'react';
 import { Plus, ImageIcon, Filter } from 'lucide-react';
+import { Dropzone } from '../components/ui/Dropzone';
+import FilterPill from '../components/ui/FilterPill';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -152,17 +154,19 @@ export function Mural() {
         <div>
           <h3 className="text-2xl font-bold">Mural</h3>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-md">
-            <Filter size={16} />
-            <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="bg-transparent text-sm outline-none">
-              <option value="Todos">Todos</option>
-              <option value="anuncio">Anúncios</option>
-              <option value="feedback">Feedbacks</option>
-              <option value="atualizacao">Atualizações</option>
-              <option value="comemoracao">Comemorações</option>
-            </select>
-          </div>
+          <div className="flex items-center gap-3">
+          <FilterPill
+            icon={<Filter size={16} />}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as any)}
+            options={[
+              { value: 'Todos', label: 'Todos' },
+              { value: 'anuncio', label: 'Anúncios' },
+              { value: 'feedback', label: 'Feedbacks' },
+              { value: 'atualizacao', label: 'Atualizações' },
+              { value: 'comemoracao', label: 'Comemorações' },
+            ]}
+          />
           <Button onClick={() => setOpen(true)} className="flex items-center gap-2 whitespace-nowrap">
             <Plus size={16} />
             Novo Post
@@ -183,11 +187,11 @@ export function Mural() {
         )}
       </div>
 
-      <Modal isOpen={open} onClose={() => setOpen(false)} title="Nova publicação">
+      <Modal isOpen={open} onClose={() => setOpen(false)} title="Nova Postagem">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Tipo</label>
-            <select value={type} onChange={(e) => setType(e.target.value as any)} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
+            <label className="block text-sm text-emerald-600 font-medium mb-1">Tipo</label>
+            <select value={type} onChange={(e) => setType(e.target.value as any)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-200">
               <option value="anuncio">Anúncio</option>
               <option value="feedback">Feedback</option>
               <option value="atualizacao">Atualização</option>
@@ -196,7 +200,7 @@ export function Mural() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Conteúdo</label>
+            <label className="block text-sm text-emerald-600 font-medium mb-1">Conteúdo</label>
             <div className="mb-2 flex flex-wrap gap-2 items-center relative">
               <button
                 type="button"
@@ -245,98 +249,66 @@ export function Mural() {
               value={content}
               onChange={handleContentChange}
               rows={6}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-200"
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <label className="flex items-center gap-2 text-gray-600">
-                <ImageIcon />
-                <span className="text-sm">Anexos (imagens ou arquivos)</span>
-              </label>
-              <input
-                type="file"
-                multiple
-                className="mt-2"
-                onChange={(e) => {
-                  const files = e.target.files;
-                  if (files) {
-                    handleFiles(files);
-                    (e.target as HTMLInputElement).value = '';
-                  }
-                }}
-              />
 
-              {attachments.length > 0 && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {attachments.map((a) => (
-                    <div key={a.id} className="relative rounded border border-gray-200 bg-white p-2">
-                      {a.mimeType.startsWith('image/') ? (
-                        <img src={a.dataUrl} alt={a.name} className="w-full h-24 object-cover rounded" />
-                      ) : (
-                        <div className="text-sm text-gray-700 flex flex-col gap-1">
-                          <span className="font-medium truncate" title={a.name}>{a.name}</span>
-                          <a href={a.dataUrl} download={a.name} className="text-blue-600 underline text-xs">baixar</a>
-                        </div>
-                      )}
-
-                      {a.status === 'done' && a.remoteUrl && (
-                        <p className="mt-2 text-[10px] text-gray-400 break-words">
-                          URL simulada: {a.remoteUrl}
-                        </p>
-                      )}
-
-                      {a.status !== 'done' && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white text-xs gap-2 rounded">
-                          <span>
-                            {a.status === 'uploading'
-                              ? 'Enviando ' + Math.round(a.progress) + '%'
-                              : 'Falha no upload'}
-                          </span>
-                          {a.status === 'uploading' && (
-                            <div className="w-3/4 h-1 bg-white/30 rounded">
-                              <div
-                                className="h-full bg-white rounded"
-                                style={{ width: Math.round(a.progress) + '%' }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <button
-                        onClick={() => removeAttachment(a.id)}
-                        className="absolute -top-2 -right-2 bg-white border border-gray-300 rounded-full w-6 h-6 flex items-center justify-center text-xs text-red-600 shadow-sm"
-                        aria-label={`Remover ${a.name}`}
-                        type="button"
-                      >
-                        x
-                      </button>
-                    </div>
-                  ))}
+            <div>
+              <div className="flex-1">
+                <label className="flex items-center gap-2 text-emerald-600">
+                  <ImageIcon className="text-emerald-500" />
+                  <span className="text-sm font-medium text-emerald-700">Anexos (imagens ou arquivos)</span>
+                </label>
+                <div className="mt-2">
+                  <Dropzone onFiles={handleFiles} />
                 </div>
-              )}
-              {hasError && (
-                <p className="mt-2 text-sm text-red-600">
-                  Alguns anexos falharam no upload. Remova-os e tente novamente.
-                </p>
-              )}
-              {isUploading && (
-                <p className="mt-2 text-sm text-gray-500">Enviando anexos...</p>
-              )}
+
+                {attachments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {attachments.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between gap-3 border rounded-md p-2 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          {a.mimeType.startsWith('image/') ? (
+                            <img src={a.dataUrl} alt={a.name} className="w-16 h-12 object-cover rounded" />
+                          ) : (
+                            <div className="w-16 h-12 flex items-center justify-center bg-gray-100 rounded text-sm">PDF</div>
+                          )}
+                          <div className="text-sm w-full">
+                            <div className="truncate max-w-[240px]">{a.name}</div>
+                            <div className="text-xs text-emerald-700 flex items-center justify-between">
+                              <span>{(a.size / 1024 / 1024).toFixed(2)} MB {a.status === 'error' ? `· Erro: ${a.error}` : ''}</span>
+                              <span className="ml-2">{a.status === 'uploading' ? 'Enviando…' : a.status === 'done' ? 'Pronto' : ''}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 h-1 rounded mt-2 overflow-hidden">
+                              <div className="bg-emerald-500 h-1" style={{ width: `${a.progress}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button type="button" className="text-red-600 text-xs" onClick={() => removeAttachment(a.id)}>Remover</button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="text-xs text-emerald-700">Total: {(attachments.reduce((s, a) => s + (a.size || 0), 0) / 1024 / 1024).toFixed(2)} MB</div>
+                    {attachments.some((a) => a.status === 'error') && <div className="text-xs text-red-600">Remova anexos inválidos antes de prosseguir.</div>}
+                    {isUploading && <div className="text-xs text-emerald-600">Enviando anexos...</div>}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setOpen(false)} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">Cancelar</Button>
+                <Button
+                  onClick={handlePublish}
+                  disabled={isUploading}
+                  title={isUploading ? 'Aguardando upload dos anexos' : undefined}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Publicar
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button
-                onClick={handlePublish}
-                disabled={isUploading}
-                title={isUploading ? 'Aguardando upload dos anexos' : undefined}
-              >
-                Publicar
-              </Button>
-            </div>
-          </div>
         </div>
       </Modal>
     </div>
