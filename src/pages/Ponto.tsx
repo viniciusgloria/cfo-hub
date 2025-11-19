@@ -10,11 +10,12 @@ import { SolicitacaoPontoModal } from '../components/SolicitacaoPontoModal';
 import { AtestadoModal } from '../components/AtestadoModal';
 import { EscolhaTipoSolicitacaoModal } from '../components/EscolhaTipoSolicitacaoModal';
 import { usePontoStore } from '../store/pontoStore';
+import { resetAll } from '../store/resetHelpers';
 import { useAuthStore } from '../store/authStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { useReservasStore } from '../store/reservasStore';
 import { useMuralStore } from '../store/muralStore';
-import { parseTimeToMinutes } from '../utils/time';
+import { minutesToHHMM, formatBankMinutes } from '../utils/time';
 
 type ViewMode = 'mensal' | 'semanal';
 
@@ -30,7 +31,21 @@ export function Ponto() {
   const [dataSelecionada, setDataSelecionada] = useState('');
   const [proxEventos, setProxEventos] = useState<Array<{ date: string; name: string; tipo?: string; dateObj?: Date }>>([]);
   
-  const { statusHoje, bancoHoras, registrarPonto, registros } = usePontoStore();
+  const {
+    registros,
+    bancoHoras = '+0:00',
+    statusHoje,
+    setFeriados,
+    registrarEntrada,
+    registrarInicioIntervalo,
+    registrarFimIntervalo,
+    registrarSaida,
+    isProcessing,
+    canRegisterEntrada,
+    canRegisterSaida,
+    canRegisterInicioIntervalo,
+    canRegisterFimIntervalo,
+  } = usePontoStore();
   const { user } = useAuthStore();
   const { colaboradores } = useColaboradoresStore();
   
@@ -161,6 +176,12 @@ export function Ponto() {
         setProxEventos(
           selecionados.map((e) => ({ date: e.dateISO, name: e.name, tipo: e.tipo, dateObj: e.dateObj }))
         );
+        // informar store sobre feriados carregados (apenas datas ISO)
+        try {
+          setFeriados(feriados.map((f) => f.dateISO));
+        } catch (e) {
+          // ignore if store not ready
+        }
       } catch (err) {
         console.error('Erro ao montar próximos eventos:', err);
       }
@@ -184,36 +205,39 @@ export function Ponto() {
   }, []);
 
   const handleRegistro = async (tipo: 'entrada' | 'saida') => {
+    const perform = async (localizacao: any) => {
+      try {
+        let res;
+        if (tipo === 'entrada') res = await registrarEntrada(localizacao);
+        else res = await registrarSaida(localizacao);
+        if (res.success) toast.success(res.message);
+        else toast.error(res.message);
+      } catch (err) {
+        toast.error('Erro ao registrar ponto');
+      }
+    };
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
           const accuracy = pos.coords.accuracy;
-
-          // Log temporário para debug (remover após validação)
-          toast(`📍 Coords: ${lat.toFixed(6)}, ${lon.toFixed(6)} (±${accuracy.toFixed(0)}m)`, { duration: 3000 });
-
+          toast(`📍 Coords: ${lat.toFixed(6)}, ${lon.toFixed(6)} (±${accuracy.toFixed(0)}m)`, { duration: 2000 });
           try {
-            // Geocoding reverso usando Nominatim (OpenStreetMap)
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1&zoom=18`,
-              { 
-                headers: { 
+              {
+                headers: {
                   'Accept-Language': 'pt-BR,pt;q=0.9',
                   'User-Agent': 'CFO-Hub/1.0 (https://github.com/viniciusgloria/cfo-hub)',
                   'Referer': window.location.origin,
-                } 
+                },
               }
             );
-            
-            if (!response.ok) {
-              throw new Error(`Nominatim HTTP ${response.status}`);
-            }
-
+            if (!response.ok) throw new Error(`Nominatim HTTP ${response.status}`);
             const data = await response.json();
             const address = data.address || {};
-            
             const localizacao = {
               bairro: address.suburb || address.neighbourhood || address.quarter || address.hamlet || 'N/A',
               cidade: address.city || address.town || address.village || address.municipality || address.county || 'N/A',
@@ -222,35 +246,76 @@ export function Ponto() {
               lon,
               accuracy,
             };
-            
-            registrarPonto(tipo, localizacao);
-            toast.success(
-              `${tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada em ${localizacao.cidade}!`
-            );
-          } catch (error) {
-            // Fallback: salvar apenas coordenadas quando API falha
-            const localizacaoFallback = { 
-              bairro: `Lat: ${lat.toFixed(6)}`, 
-              cidade: `Lon: ${lon.toFixed(6)}`, 
-              estado: '(GPS)', 
-              lat, 
-              lon, 
-              accuracy 
-            };
-            registrarPonto(tipo, localizacaoFallback);
-            toast.error(`Endereço não disponível. Coordenadas salvas: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+            await perform(localizacao);
+          } catch (err) {
+            const localizacaoFallback = `Geolocalização indefinida`;
+            await perform(localizacaoFallback);
+            toast.error('Endereço não disponível. Registrado com fallback de localização.');
           }
         },
-        (err) => {
-          const erroLocalizacao = { bairro: 'Erro de Permissão', cidade: err.message || 'Negado', estado: '' };
-          registrarPonto(tipo, erroLocalizacao);
+        async (err) => {
+          const fallback = `Geolocalização indefinida`;
+          await perform(fallback);
           toast.error(`Erro ao acessar localização: ${err.message}`);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      const erroLocalizacao = { bairro: 'Navegador', cidade: 'Sem GPS', estado: '' };
-      registrarPonto(tipo, erroLocalizacao);
+      const fallback = `Geolocalização indefinida`;
+      await perform(fallback);
+      toast.error('Geolocalização não disponível neste navegador.');
+    }
+  };
+
+  const handleIntervalo = async (tipo: 'inicio' | 'fim') => {
+    const perform = async (localizacao: any) => {
+      try {
+        let res;
+        if (tipo === 'inicio') res = await registrarInicioIntervalo(localizacao);
+        else res = await registrarFimIntervalo(localizacao);
+        if (res.success) toast.success(res.message);
+        else toast.error(res.message);
+      } catch (err) {
+        toast.error('Erro ao registrar intervalo');
+      }
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const accuracy = pos.coords.accuracy;
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1&zoom=18`,
+              { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'CFO-Hub/1.0', 'Referer': window.location.origin } }
+            );
+            if (!response.ok) throw new Error('Nominatim error');
+            const data = await response.json();
+            const address = data.address || {};
+            const localizacao = {
+              bairro: address.suburb || address.neighbourhood || 'N/A',
+              cidade: address.city || address.town || 'N/A',
+              estado: address.state || address.region || 'N/A',
+              lat,
+              lon,
+              accuracy,
+            };
+            await perform(localizacao);
+          } catch (err) {
+            await perform('Geolocalização indefinida');
+            toast.error('Endereço não disponível. Registrado com fallback.');
+          }
+        },
+        async (err) => {
+          await perform('Geolocalização indefinida');
+          toast.error(`Erro ao acessar localização: ${err.message}`);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      await perform('Geolocalização indefinida');
       toast.error('Geolocalização não disponível neste navegador.');
     }
   };
@@ -260,34 +325,61 @@ export function Ponto() {
       toast.error('Sem registros para exportar');
       return;
     }
-    
+
     // Dados do colaborador para incluir no CSV
     const nomeColaborador = user?.name || 'N/A';
     const emailColaborador = user?.email || 'N/A';
     const cargoColaborador = colaboradorLogado?.cargo || 'N/A';
     const departamentoColaborador = colaboradorLogado?.departamento || 'N/A';
-    
-    const header = 'colaborador,email,cargo,departamento,data,entrada,saida,intervalo,total,banco,entrada_bairro,entrada_cidade,entrada_estado,saida_bairro,saida_cidade,saida_estado';
-    const lines = registros.map((r) =>
-      [
+
+    const header = 'colaborador,email,cargo,departamento,data,entrada,saida,inicio_intervalo,fim_intervalo,intervalo,total,banco,entrada_bairro,entrada_cidade,entrada_estado,saida_bairro,saida_cidade,saida_estado';
+    const expectedPerDay = 8 * 60;
+
+    const lines = registros.map((r) => {
+      const entradaPunch = (r.punches || []).find((p: any) => p.type === 'entrada');
+      const saidaPunch = ([...(r.punches || [])].reverse() as any[]).find((p) => p.type === 'saida');
+      const entrada = entradaPunch?.hhmm ?? '';
+      const saida = saidaPunch?.hhmm ?? '';
+      const intervaloMin = (r.intervals || []).reduce((s: number, it: any) => s + (it.duracaoMinutos || 0), 0);
+      const intervaloStr = intervaloMin > 0 ? minutesToHHMM(intervaloMin) : '';
+      const entradaIntervalos = (r.intervals || []).map((it: any) => it.inicioTs ? new Date(it.inicioTs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+      const fimIntervalos = (r.intervals || []).map((it: any) => it.fimTs ? new Date(it.fimTs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+      const entradaIntervalosStr = entradaIntervalos.filter(Boolean).join(', ');
+      const fimIntervalosStr = fimIntervalos.filter(Boolean).join(', ');
+      const totalStr = typeof r.totalMinutos === 'number' ? minutesToHHMM(r.totalMinutos) : '';
+      const banco = formatBankMinutes((r.totalMinutos ?? 0) - expectedPerDay);
+
+      const entradaLoc = entradaPunch?.localizacao;
+      const saidaLoc = saidaPunch?.localizacao;
+      const entradaBairro = typeof entradaLoc === 'string' ? entradaLoc : entradaLoc?.bairro ?? '';
+      const entradaCidade = typeof entradaLoc === 'string' ? '' : entradaLoc?.cidade ?? '';
+      const entradaEstado = typeof entradaLoc === 'string' ? '' : entradaLoc?.estado ?? '';
+      const saidaBairro = typeof saidaLoc === 'string' ? saidaLoc : saidaLoc?.bairro ?? '';
+      const saidaCidade = typeof saidaLoc === 'string' ? '' : saidaLoc?.cidade ?? '';
+      const saidaEstado = typeof saidaLoc === 'string' ? '' : saidaLoc?.estado ?? '';
+
+      return [
         nomeColaborador,
         emailColaborador,
         cargoColaborador,
         departamentoColaborador,
         r.data,
-        r.entrada,
-        r.saida,
-        r.intervalo,
-        r.total,
-        r.banco,
-        r.localizacaoEntrada?.bairro ?? '',
-        r.localizacaoEntrada?.cidade ?? '',
-        r.localizacaoEntrada?.estado ?? '',
-        r.localizacaoSaida?.bairro ?? '',
-        r.localizacaoSaida?.cidade ?? '',
-        r.localizacaoSaida?.estado ?? '',
-      ].join(',')
-    );
+        entrada,
+        saida,
+        entradaIntervalosStr,
+        fimIntervalosStr,
+        intervaloStr,
+        totalStr,
+        banco,
+        entradaBairro,
+        entradaCidade,
+        entradaEstado,
+        saidaBairro,
+        saidaCidade,
+        saidaEstado,
+      ].join(',');
+    });
+
     const csv = [header, ...lines].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -299,18 +391,19 @@ export function Ponto() {
     toast.success('CSV exportado');
   };
 
-  const isBancoPositivo = bancoHoras.startsWith('+');
+  const expectedPerDay = 8 * 60;
+  const isBancoPositivo = (bancoHoras || '+0:00').startsWith('+');
 
   // Cálculo do progresso mensal usando a meta do colaborador
   const metaMensal = metaHorasMensais * 60; // em minutos
   const horasTrabalhadasMes = registros
-    .map((r) => parseTimeToMinutes(r.total) || 0)
+    .map((r) => r.totalMinutos ?? 0)
     .reduce((acc, val) => acc + val, 0);
   const progressoMensal = metaMensal > 0 ? Math.min((horasTrabalhadasMes / metaMensal) * 100, 100) : 0;
 
   // Cálculo do intervalo médio diário (em minutos)
   const intervalosMin = registros
-    .map((r) => parseTimeToMinutes(r.intervalo) || 0)
+    .map((r) => (r.intervals || []).reduce((s: number, it: any) => s + (it.duracaoMinutos || 0), 0))
     .filter((v) => v > 0);
   const intervaloMedioMin = intervalosMin.length > 0
     ? Math.round(intervalosMin.reduce((acc, val) => acc + val, 0) / intervalosMin.length)
@@ -334,7 +427,7 @@ export function Ponto() {
       data.setDate(data.getDate() - i + diasOffset);
       const dataStr = data.toLocaleDateString('pt-BR');
       const registro = registros.find((r) => r.data === dataStr);
-      const minutos = registro ? parseTimeToMinutes(registro.total) || 0 : 0;
+      const minutos = registro ? registro.totalMinutos || 0 : 0;
       const horas = minutos / 60;
       
       dados.push({
@@ -373,18 +466,29 @@ export function Ponto() {
                   <AlertCircle size={18} className="text-green-700" />
                   <p className="text-sm text-green-700 font-medium">{statusHoje}</p>
                 </div>
-                <div className="flex gap-3 w-full max-w-xs">
-                  <Button variant="primary" fullWidth onClick={() => handleRegistro('entrada')}>
-                    Registrar Entrada
-                  </Button>
-                  <Button
-                    variant="outline"
-                    fullWidth
-                    onClick={() => handleRegistro('saida')}
-                    className="border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    Registrar<br />Saída
-                  </Button>
+                <div className="w-full max-w-xs">
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <Button variant="primary" fullWidth onClick={() => handleRegistro('entrada')} disabled={isProcessing || !canRegisterEntrada}>
+                      Entrada
+                    </Button>
+                    <Button
+                      variant="outline"
+                      fullWidth
+                      onClick={() => handleRegistro('saida')}
+                      className="border-red-300 text-red-600 hover:bg-red-50"
+                      disabled={isProcessing || !canRegisterSaida}
+                    >
+                      Saída
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button variant="intervalStart" fullWidth onClick={() => handleIntervalo('inicio')} disabled={isProcessing || !canRegisterInicioIntervalo}>
+                      Iniciar<br />Intervalo
+                    </Button>
+                    <Button variant="intervalEnd" fullWidth onClick={() => handleIntervalo('fim')} disabled={isProcessing || !canRegisterFimIntervalo}>
+                      Encerrar Intervalo
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -571,6 +675,24 @@ export function Ponto() {
               <option>Outubro 2024</option>
               <option>Setembro 2024</option>
             </select>
+            {import.meta.env.DEV && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    resetAll();
+                    toast.success('Stores resetados — recarregando...');
+                  } catch (e) {
+                    toast.error('Erro ao resetar stores');
+                  }
+                  setTimeout(() => location.reload(), 200);
+                }}
+                className="text-sm"
+                title="Resetar stores (dev)"
+              >
+                Reset Dev
+              </Button>
+            )}
             <Button
               variant="secondary"
               onClick={exportCSV}
@@ -605,6 +727,8 @@ export function Ponto() {
                     <th className="text-left p-3 font-semibold text-gray-700">Data</th>
                     <th className="text-left p-3 font-semibold text-gray-700">Entrada</th>
                     <th className="text-left p-3 font-semibold text-gray-700">Saída</th>
+                    <th className="text-left p-3 font-semibold text-gray-700">Início Intervalo</th>
+                    <th className="text-left p-3 font-semibold text-gray-700">Fim Intervalo</th>
                     <th className="text-left p-3 font-semibold text-gray-700">Intervalo</th>
                     <th className="text-left p-3 font-semibold text-gray-700">Total</th>
                     <th className="text-left p-3 font-semibold text-gray-700">Banco</th>
@@ -613,49 +737,68 @@ export function Ponto() {
                   </tr>
                 </thead>
                 <tbody>
-                  {registros.map((reg) => (
-                    <tr key={reg.data + reg.entrada + reg.saida} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="p-3 text-gray-700">{reg.data}</td>
-                      <td className="p-3 text-gray-700">{reg.entrada}</td>
-                      <td className="p-3 text-gray-700">{reg.saida}</td>
-                      <td className="p-3 text-gray-700">{reg.intervalo}</td>
-                      <td className="p-3 text-gray-700">{reg.total}</td>
-                      <td className={`p-3 font-medium ${reg.banco.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>{reg.banco}</td>
-                      <td className="p-3 text-xs text-gray-600">
-                        <div className="space-y-1">
-                          {reg.localizacaoEntrada && (
-                            <div className="flex items-start gap-1">
-                              <span className="text-green-600">E:</span>
-                              <span>
-                                {reg.localizacaoEntrada.cidade 
-                                  ? `${reg.localizacaoEntrada.bairro}, ${reg.localizacaoEntrada.cidade}, ${reg.localizacaoEntrada.estado}`
-                                  : reg.localizacaoEntrada.bairro}
-                              </span>
-                            </div>
-                          )}
-                          {reg.localizacaoSaida && (
-                            <div className="flex items-start gap-1">
-                              <span className="text-red-600">S:</span>
-                              <span>
-                                {reg.localizacaoSaida.cidade 
-                                  ? `${reg.localizacaoSaida.bairro}, ${reg.localizacaoSaida.cidade}, ${reg.localizacaoSaida.estado}`
-                                  : reg.localizacaoSaida.bairro}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <button
-                          onClick={() => handleSolicitarAjuste(reg.data)}
-                          className="text-blue-600 hover:underline text-sm"
-                          title="Solicitar ajuste ou anexar atestado"
-                        >
-                          Solicitar Ajuste
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {registros.map((reg) => {
+                    const entradaPunch = (reg.punches || []).find((p: any) => p.type === 'entrada');
+                    const saidaPunch = ([...(reg.punches || [])].reverse() as any[]).find((p) => p.type === 'saida');
+                    const entrada = entradaPunch?.hhmm ?? '--:--';
+                    const saida = saidaPunch?.hhmm ?? '--:--';
+                    const intervaloMin = (reg.intervals || []).reduce((s: number, it: any) => s + (it.duracaoMinutos || 0), 0);
+                    const intervaloStr = intervaloMin > 0 ? minutesToHHMM(intervaloMin) : '--:--';
+                    // derive interval start/end times (may be multiple)
+                    const entradaIntervalos = (reg.intervals || []).map((it: any) => it.inicioTs ? new Date(it.inicioTs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--');
+                    const fimIntervalos = (reg.intervals || []).map((it: any) => it.fimTs ? new Date(it.fimTs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--');
+                    const entradaIntervalosStr = entradaIntervalos.length ? entradaIntervalos.join(', ') : '--:--';
+                    const fimIntervalosStr = fimIntervalos.length ? fimIntervalos.join(', ') : '--:--';
+                    const totalStr = typeof reg.totalMinutos === 'number' ? minutesToHHMM(reg.totalMinutos) : '--:--';
+                    const bancoStr = formatBankMinutes((reg.totalMinutos ?? 0) - expectedPerDay);
+
+                    const entradaLoc = entradaPunch?.localizacao;
+                    const saidaLoc = saidaPunch?.localizacao;
+                    const entradaLocStr = entradaLoc
+                      ? (typeof entradaLoc === 'string' ? entradaLoc : `${entradaLoc.bairro}${entradaLoc.cidade ? ', ' + entradaLoc.cidade + ', ' + entradaLoc.estado : ''}`)
+                      : '';
+                    const saidaLocStr = saidaLoc
+                      ? (typeof saidaLoc === 'string' ? saidaLoc : `${saidaLoc.bairro}${saidaLoc.cidade ? ', ' + saidaLoc.cidade + ', ' + saidaLoc.estado : ''}`)
+                      : '';
+
+                    return (
+                      <tr key={reg.data} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="p-3 text-gray-700">{reg.data}</td>
+                        <td className="p-3 text-gray-700">{entrada}</td>
+                        <td className="p-3 text-gray-700">{saida}</td>
+                        <td className="p-3 text-gray-700">{entradaIntervalosStr}</td>
+                        <td className="p-3 text-gray-700">{fimIntervalosStr}</td>
+                        <td className="p-3 text-gray-700">{intervaloStr}</td>
+                        <td className="p-3 text-gray-700">{totalStr}</td>
+                        <td className={`p-3 font-medium ${bancoStr.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>{bancoStr}</td>
+                        <td className="p-3 text-xs text-gray-600">
+                          <div className="space-y-1">
+                            {entradaLocStr && (
+                              <div className="flex items-start gap-1">
+                                <span className="text-green-600">E:</span>
+                                <span>{entradaLocStr}</span>
+                              </div>
+                            )}
+                            {saidaLocStr && (
+                              <div className="flex items-start gap-1">
+                                <span className="text-red-600">S:</span>
+                                <span>{saidaLocStr}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <button
+                            onClick={() => handleSolicitarAjuste(reg.data)}
+                            className="text-blue-600 hover:underline text-sm"
+                            title="Solicitar ajuste ou anexar atestado"
+                          >
+                            Solicitar Ajuste
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

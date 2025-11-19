@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'outlineDanger' | 'outlineContrast';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'outlineDanger' | 'outlineContrast' | 'intervalStart' | 'intervalEnd';
   children: ReactNode;
   fullWidth?: boolean;
   loading?: boolean;
@@ -21,6 +21,8 @@ export function Button({
   const variants: Record<string, string> = {
     primary: 'bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]',
     secondary: 'bg-[#1F2937] text-white hover:bg-[#374151] focus-visible:ring-[#1F2937]',
+    intervalStart: 'bg-amber-500 text-white hover:bg-amber-600 focus-visible:ring-amber-500',
+    intervalEnd: 'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-600',
     outline: 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-400',
     ghost: 'text-gray-700 hover:bg-gray-100 focus-visible:ring-gray-400',
     outlineDanger: 'border-2 border-red-300 text-red-600 hover:bg-red-50 focus-visible:ring-red-300',

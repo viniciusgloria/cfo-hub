@@ -3,109 +3,329 @@ import { persist } from 'zustand/middleware';
 import { parseTimeToMinutes, minutesToHHMM, formatBankMinutes, diffMinutes } from '../utils/time';
 
 export interface Localizacao {
-  bairro: string;
-  cidade: string;
-  estado: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
   lat?: number;
   lon?: number;
   accuracy?: number;
 }
 
-export interface RegistroPonto {
-  data: string;
-  entrada: string;
-  saida: string;
-  intervalo: string;
-  total: string;
-  banco: string;
-  /** Localização da entrada */
-  localizacaoEntrada?: Localizacao;
-  /** Localização da saída */
-  localizacaoSaida?: Localizacao;
+export type PunchType = 'entrada' | 'saida' | 'inicio_intervalo' | 'fim_intervalo';
+
+export interface Punch {
+  type: PunchType;
+  ts: number; // timestamp UTC
+  hhmm: string; // formatted HH:MM
+  localizacao?: Localizacao | string; // allow string for fallback "Geolocalização indefinida"
+}
+
+export interface Intervalo {
+  inicioTs: number;
+  fimTs?: number;
+  duracaoMinutos?: number;
+}
+
+export interface RegistroDia {
+  data: string; // 'DD/MM/YYYY'
+  punches: Punch[]; // audit trail, chronological ascending
+  intervals: Intervalo[]; // derived
+  totalMinutos?: number;
+  bancoHoras?: string;
+  isFeriado?: boolean;
+  updatedAt?: number;
 }
 
 interface PontoState {
-  registros: RegistroPonto[];
-  bancoHoras: string;
+  registros: RegistroDia[]; // most recent first in UI, but stored here newest first for convenience
+  feriadosISO: string[]; // YYYY-MM-DD
+  bancoHoras?: string;
+  isProcessing: boolean;
   statusHoje: string;
-  registrarPonto: (tipo: 'entrada' | 'saida', localizacao?: Localizacao) => void;
+  // actions
+  setFeriados: (isoDates: string[]) => void;
+  canRegisterEntrada: (date?: Date) => { ok: boolean; message?: string };
+  canRegisterSaida: (date?: Date) => { ok: boolean; message?: string };
+  canRegisterInicioIntervalo: (date?: Date) => { ok: boolean; message?: string };
+  canRegisterFimIntervalo: (date?: Date) => { ok: boolean; message?: string };
+  registrarEntrada: (localizacao?: Localizacao | string) => Promise<{ success: boolean; message: string }>;
+  registrarInicioIntervalo: (localizacao?: Localizacao | string) => Promise<{ success: boolean; message: string }>;
+  registrarFimIntervalo: (localizacao?: Localizacao | string) => Promise<{ success: boolean; message: string }>;
+  registrarSaida: (localizacao?: Localizacao | string) => Promise<{ success: boolean; message: string }>;
   reset: () => void;
 }
 
-const mockRegistros: RegistroPonto[] = [
-  { data: '10/11/2025', entrada: '09:00', saida: '18:15', intervalo: '01:00', total: '08:15', banco: '+0:15' },
-  { data: '07/11/2025', entrada: '08:45', saida: '18:00', intervalo: '01:00', total: '08:15', banco: '+0:15' },
-  { data: '06/11/2025', entrada: '09:05', saida: '18:30', intervalo: '01:00', total: '08:25', banco: '+0:25' },
-  { data: '05/11/2025', entrada: '09:00', saida: '17:45', intervalo: '01:00', total: '07:45', banco: '-0:15' },
-  { data: '04/11/2025', entrada: '08:50', saida: '18:10', intervalo: '01:00', total: '08:20', banco: '+0:20' }
-];
+const DEFAULT_EXPECTED_PER_DAY = 8 * 60;
+
+function formatDateKey(d = new Date()) {
+  return d.toLocaleDateString('pt-BR'); // matches UI
+}
+
+function hhmmFromTs(ts: number) {
+  return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
 
 export const usePontoStore = create<PontoState>()(
   persist(
-    (set) => ({
-      registros: mockRegistros,
-      bancoHoras: '+8:30',
-      statusHoje: 'Entrada registrada às 09:00',
-      registrarPonto: (tipo, localizacao) => {
-        const now = new Date();
-        const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const date = now.toLocaleDateString('pt-BR');
+    (set, get) => ({
+      registros: [],
+      feriadosISO: [],
+      isProcessing: false,
+      statusHoje: 'Registre sua entrada!',
 
-        set((state) => {
-          const todayIndex = state.registros.findIndex((r) => r.data === date);
-          let registros = [...state.registros];
+      setFeriados: (isoDates: string[]) => set({ feriadosISO: isoDates }),
 
-          if (todayIndex >= 0) {
-            const existing = { ...registros[todayIndex] };
-            if (tipo === 'entrada') {
-              existing.entrada = time;
-              if (localizacao) existing.localizacaoEntrada = localizacao;
-            } else {
-              existing.saida = time;
-              if (localizacao) existing.localizacaoSaida = localizacao;
-            }
-            const intervaloMins = parseTimeToMinutes(existing.intervalo) ?? 60; // default 60 min
-            const dur = diffMinutes(existing.entrada, existing.saida);
-            if (dur != null) {
-              const totalMins = Math.max(0, dur - intervaloMins);
-              existing.total = minutesToHHMM(totalMins);
-            }
-            registros[todayIndex] = existing;
-          } else {
-            const novo: RegistroPonto = {
-              data: date,
-              entrada: tipo === 'entrada' ? time : '--:--',
-              saida: tipo === 'saida' ? time : '--:--',
-              intervalo: '01:00',
-              total: '--:--',
-              banco: '+0:00',
-              localizacaoEntrada: tipo === 'entrada' ? localizacao : undefined,
-              localizacaoSaida: tipo === 'saida' ? localizacao : undefined,
-            };
-            const dur = diffMinutes(novo.entrada, novo.saida);
-            if (dur != null) {
-              const intervaloMins = parseTimeToMinutes(novo.intervalo) ?? 60;
-              novo.total = minutesToHHMM(Math.max(0, dur - intervaloMins));
-            }
-            registros = [novo, ...registros];
-          }
-
-          const expectedPerDay = 8 * 60;
-          const totalsMins = registros
-            .map((r) => parseTimeToMinutes(r.total) ?? null)
-            .filter((v) => v != null) as number[];
-          const sumTotal = totalsMins.reduce((a, b) => a + b, 0);
-          const bankMins = sumTotal - expectedPerDay * totalsMins.length;
-
-          return {
-            registros,
-            bancoHoras: formatBankMinutes(bankMins),
-            statusHoje: `${tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada às ${time}`,
-          };
-        });
+      canRegisterEntrada: (date = new Date()) => {
+        const iso = date.toISOString().slice(0, 10);
+        const todayKey = formatDateKey(date);
+        if (get().feriadosISO.includes(iso)) return { ok: false, message: 'Hoje é feriado!' };
+        const registro = get().registros.find((r) => r.data === todayKey);
+        if (registro && registro.punches.some((p) => p.type === 'entrada')) {
+          return { ok: false, message: 'Entrada já registrada' };
+        }
+        return { ok: true };
       },
-      reset: () => set({ registros: mockRegistros, bancoHoras: '+8:30', statusHoje: 'Entrada registrada às 09:00' }),
+
+      canRegisterSaida: (date = new Date()) => {
+        const iso = date.toISOString().slice(0, 10);
+        const todayKey = formatDateKey(date);
+        if (get().feriadosISO.includes(iso)) return { ok: false, message: 'Hoje é feriado!' };
+        const registro = get().registros.find((r) => r.data === todayKey);
+        if (!registro || !registro.punches.some((p) => p.type === 'entrada')) {
+          return { ok: false, message: 'Você precisa registrar a entrada!' };
+        }
+        if (registro.punches.some((p) => p.type === 'saida')) return { ok: false, message: 'Saída já registrada' };
+        return { ok: true };
+      },
+
+      canRegisterInicioIntervalo: (date = new Date()) => {
+        const iso = date.toISOString().slice(0, 10);
+        const todayKey = formatDateKey(date);
+        if (get().feriadosISO.includes(iso)) return { ok: false, message: 'Hoje é feriado!' };
+        const registro = get().registros.find((r) => r.data === todayKey);
+        if (!registro || !registro.punches.some((p) => p.type === 'entrada')) {
+          return { ok: false, message: 'Primeiro registre a entrada!' };
+        }
+        // check if there's an open interval (inicio without fim)
+        const hasOpenInicio = registro.punches.some((p) => p.type === 'inicio_intervalo' && !registro.punches.some((q) => q.type === 'fim_intervalo' && q.ts >= p.ts));
+        if (hasOpenInicio) return { ok: false, message: 'Intervalo já iniciado' };
+        return { ok: true };
+      },
+
+      canRegisterFimIntervalo: (date = new Date()) => {
+        const iso = date.toISOString().slice(0, 10);
+        const todayKey = formatDateKey(date);
+        if (get().feriadosISO.includes(iso)) return { ok: false, message: 'Hoje é feriado!' };
+        const registro = get().registros.find((r) => r.data === todayKey);
+        if (!registro) return { ok: false, message: 'Não há intervalo em andamento' };
+        // find last inicio without matching fim
+        const inicio = registro.punches.slice().reverse().find((p) => p.type === 'inicio_intervalo' && !registro.punches.some((q) => q.type === 'fim_intervalo' && q.ts >= p.ts));
+        if (!inicio) return { ok: false, message: 'Não há intervalo em andamento' };
+        return { ok: true };
+      },
+
+      registrarEntrada: async (localizacao) => {
+        const processing = get().isProcessing;
+        if (processing) return { success: false, message: 'Processando...' };
+        set({ isProcessing: true });
+        try {
+          const can = get().canRegisterEntrada();
+          if (!can.ok) return { success: false, message: can.message || 'Não permitido' };
+          const now = Date.now();
+          const hh = hhmmFromTs(now);
+          const dateKey = formatDateKey(new Date());
+          const punch: Punch = { type: 'entrada', ts: now, hhmm: hh, localizacao: localizacao ?? 'Geolocalização indefinida' };
+          set((state) => {
+            const registros = [...state.registros];
+            const idx = registros.findIndex((r) => r.data === dateKey);
+            if (idx >= 0) {
+              registros[idx] = { ...registros[idx], punches: [...registros[idx].punches, punch], updatedAt: Date.now() };
+            } else {
+              const novo: RegistroDia = { data: dateKey, punches: [punch], intervals: [], updatedAt: Date.now() };
+              registros.unshift(novo);
+            }
+            return { registros, statusHoje: `Entrada registrada às ${hh}` } as any;
+          });
+          return { success: true, message: `Entrada registrada às ${hh}` };
+        } finally {
+          set({ isProcessing: false });
+        }
+      },
+
+      registrarInicioIntervalo: async (localizacao) => {
+        const processing = get().isProcessing;
+        if (processing) return { success: false, message: 'Processando...' };
+        set({ isProcessing: true });
+        try {
+          const can = get().canRegisterInicioIntervalo();
+          if (!can.ok) return { success: false, message: can.message || 'Não permitido' };
+          const now = Date.now();
+          const hh = hhmmFromTs(now);
+          const dateKey = formatDateKey(new Date());
+          const punch: Punch = { type: 'inicio_intervalo', ts: now, hhmm: hh, localizacao: localizacao ?? 'Geolocalização indefinida' };
+          set((state) => {
+            const registros = [...state.registros];
+            const idx = registros.findIndex((r) => r.data === dateKey);
+            if (idx >= 0) {
+              const registro = { ...registros[idx] };
+              const punches = [...registro.punches, punch];
+              // build intervals including open intervals (inicio without fim)
+              const intervals: Intervalo[] = [];
+              const stack: number[] = [];
+              punches.forEach((p) => {
+                if (p.type === 'inicio_intervalo') stack.push(p.ts);
+                if (p.type === 'fim_intervalo' && stack.length) {
+                  const inicioTs = stack.pop() as number;
+                  const fimTs = p.ts;
+                  intervals.push({ inicioTs, fimTs, duracaoMinutos: Math.max(0, Math.round((fimTs - inicioTs) / 60000)) });
+                }
+              });
+              // any remaining in stack represent open intervals (no fim yet)
+              while (stack.length) {
+                const inicioTs = stack.shift() as number;
+                intervals.push({ inicioTs });
+              }
+
+              registro.punches = punches;
+              registro.intervals = intervals;
+              registro.updatedAt = Date.now();
+              registros[idx] = registro;
+            } else {
+              // shouldn't happen due to canRegister but be safe
+              const punches = [punch];
+              const intervals: Intervalo[] = [{ inicioTs: now }];
+              registros.unshift({ data: dateKey, punches, intervals, updatedAt: Date.now() });
+            }
+            return { registros, statusHoje: `Intervalo iniciado às ${hh}` } as any;
+          });
+          return { success: true, message: `Intervalo iniciado às ${hh}` };
+        } finally {
+          set({ isProcessing: false });
+        }
+      },
+
+      registrarFimIntervalo: async (localizacao) => {
+        const processing = get().isProcessing;
+        if (processing) return { success: false, message: 'Processando...' };
+        set({ isProcessing: true });
+        try {
+          const can = get().canRegisterFimIntervalo();
+          if (!can.ok) return { success: false, message: can.message || 'Não permitido' };
+          const now = Date.now();
+          const hh = hhmmFromTs(now);
+          const dateKey = formatDateKey(new Date());
+          set((state) => {
+            const registros = [...state.registros];
+            const idx = registros.findIndex((r) => r.data === dateKey);
+            if (idx >= 0) {
+              const registro = { ...registros[idx] };
+              // find last open inicio
+              const punches = [...registro.punches];
+              const lastInicioIndex = [...punches].reverse().findIndex((p) => p.type === 'inicio_intervalo' && !punches.some((q) => q.type === 'fim_intervalo' && q.ts >= p.ts));
+              const revIndex = lastInicioIndex >= 0 ? punches.length - 1 - lastInicioIndex : -1;
+              if (revIndex >= 0) {
+                const fimPunch: Punch = { type: 'fim_intervalo', ts: now, hhmm: hh, localizacao: localizacao ?? 'Geolocalização indefinida' };
+                punches.push(fimPunch);
+                // build intervals from punches
+                const intervals: Intervalo[] = [];
+                const stack: number[] = [];
+                punches.forEach((p) => {
+                  if (p.type === 'inicio_intervalo') stack.push(p.ts);
+                  if (p.type === 'fim_intervalo' && stack.length) {
+                    const inicioTs = stack.pop() as number;
+                    const fimTs = p.ts;
+                    intervals.push({ inicioTs, fimTs, duracaoMinutos: Math.max(0, Math.round((fimTs - inicioTs) / 60000)) });
+                  }
+                });
+                registro.punches = punches;
+                registro.intervals = intervals;
+                registro.updatedAt = Date.now();
+                registros[idx] = registro;
+                // update status
+                return { registros, statusHoje: `Intervalo finalizado às ${hh}` } as any;
+              }
+            }
+            return { registros: state.registros } as any;
+          });
+          return { success: true, message: `Intervalo finalizado às ${hh}` };
+        } finally {
+          set({ isProcessing: false });
+        }
+      },
+
+      registrarSaida: async (localizacao) => {
+        const processing = get().isProcessing;
+        if (processing) return { success: false, message: 'Processando...' };
+        set({ isProcessing: true });
+        try {
+          const can = get().canRegisterSaida();
+          if (!can.ok) return { success: false, message: can.message || 'Não permitido' };
+          const now = Date.now();
+          const hh = hhmmFromTs(now);
+          const dateKey = formatDateKey(new Date());
+          set((state) => {
+            const registros = [...state.registros];
+            const idx = registros.findIndex((r) => r.data === dateKey);
+            if (idx >= 0) {
+              const registro = { ...registros[idx] };
+              // if there is any open interval, close it automatically at exit time
+              const punches = [...registro.punches];
+              const openInicio = punches.find((p) => p.type === 'inicio_intervalo' && !punches.some((q) => q.type === 'fim_intervalo' && q.ts >= p.ts));
+              if (openInicio) {
+                punches.push({ type: 'fim_intervalo', ts: now, hhmm: hh, localizacao: localizacao ?? 'Geolocalização indefinida' });
+              }
+              // add exit punch
+              punches.push({ type: 'saida', ts: now, hhmm: hh, localizacao: localizacao ?? 'Geolocalização indefinida' });
+
+              // derive intervals
+              const intervals: Intervalo[] = [];
+              const stack: number[] = [];
+              punches.forEach((p) => {
+                if (p.type === 'inicio_intervalo') stack.push(p.ts);
+                if (p.type === 'fim_intervalo' && stack.length) {
+                  const inicioTs = stack.pop() as number;
+                  const fimTs = p.ts;
+                  intervals.push({ inicioTs, fimTs, duracaoMinutos: Math.max(0, Math.round((fimTs - inicioTs) / 60000)) });
+                }
+              });
+
+              // compute total: find first entrada and last saida
+              const entradaPunch = punches.find((p) => p.type === 'entrada');
+              const saidaPunch = [...punches].reverse().find((p) => p.type === 'saida');
+              let totalMinutos: number | undefined = undefined;
+              if (entradaPunch && saidaPunch) {
+                const dur = Math.max(0, Math.round((saidaPunch.ts - entradaPunch.ts) / 60000));
+                const intervalSum = intervals.reduce((s, it) => s + (it.duracaoMinutos || 0), 0);
+                totalMinutos = Math.max(0, dur - intervalSum);
+              }
+
+              registro.punches = punches;
+              registro.intervals = intervals;
+              registro.totalMinutos = totalMinutos;
+              // compute bancoHoras across all registros
+              registros[idx] = registro;
+
+              // recompute bank for all registros
+              const expected = DEFAULT_EXPECTED_PER_DAY;
+              const totals = registros.map((r) => r.totalMinutos ?? 0).filter((v) => v > 0);
+              const sumTotals = totals.reduce((a, b) => a + b, 0);
+              const bankMins = sumTotals - expected * (totals.length || 1);
+
+              return { registros, statusHoje: 'Entrada e saída registrados!', bancoHoras: formatBankMinutes(bankMins) } as any;
+            }
+            return { registros: state.registros } as any;
+          });
+          return { success: true, message: 'Entrada e saída registrados!' };
+        } finally {
+          set({ isProcessing: false });
+        }
+      },
+
+      reset: () => set({ registros: [], feriadosISO: [], isProcessing: false, statusHoje: 'Registre sua entrada!' }),
     }),
-    { name: 'cfo:ponto', partialize: (s) => ({ registros: s.registros, bancoHoras: s.bancoHoras }) }
+    { name: 'cfo:ponto:v2' }
   )
 );
+
+export default usePontoStore;
+import { create } from 'zustand';

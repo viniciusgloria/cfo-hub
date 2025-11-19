@@ -1,0 +1,172 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - heading "CFO Hub" [level=1] [ref=e8]
+          - button "Alterar logo" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+        - button "Colapsar sidebar" [ref=e13] [cursor=pointer]:
+          - img [ref=e14]
+      - navigation [ref=e17]:
+        - link "Dashboard" [ref=e18] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e19]
+          - generic [ref=e22]: Dashboard
+        - link "Ponto" [ref=e23] [cursor=pointer]:
+          - /url: /ponto
+          - img [ref=e24]
+          - generic [ref=e27]: Ponto
+        - link "Mural" [ref=e28] [cursor=pointer]:
+          - /url: /mural
+          - img [ref=e29]
+          - generic [ref=e31]: Mural
+        - link "Calendário" [ref=e32] [cursor=pointer]:
+          - /url: /calendario
+          - img [ref=e33]
+          - generic [ref=e35]: Calendário
+        - link "Clientes" [ref=e36] [cursor=pointer]:
+          - /url: /clientes
+          - img [ref=e37]
+          - generic [ref=e42]: Clientes
+        - link "Chat" [ref=e43] [cursor=pointer]:
+          - /url: /chat
+          - img [ref=e44]
+          - generic [ref=e46]: Chat
+        - link "Feedbacks" [ref=e47] [cursor=pointer]:
+          - /url: /feedbacks
+          - img [ref=e48]
+          - generic [ref=e50]: Feedbacks
+        - link "Solicitações" [ref=e51] [cursor=pointer]:
+          - /url: /solicitacoes
+          - img [ref=e52]
+          - generic [ref=e55]: Solicitações
+        - link "Configurações" [ref=e56] [cursor=pointer]:
+          - /url: /configuracoes
+          - img [ref=e57]
+          - generic [ref=e60]: Configurações
+        - link "Avaliações" [ref=e62] [cursor=pointer]:
+          - /url: /avaliacoes
+          - img [ref=e63]
+          - generic [ref=e66]: Avaliações
+        - link "Aprovações Ponto" [ref=e67] [cursor=pointer]:
+          - /url: /solicitacoes-ponto
+          - img [ref=e68]
+          - generic [ref=e72]: Aprovações Ponto
+        - link "Colaboradores" [ref=e73] [cursor=pointer]:
+          - /url: /colaboradores
+          - img [ref=e74]
+          - generic [ref=e86]: Colaboradores
+        - link "Desenvolvimento" [ref=e87] [cursor=pointer]:
+          - /url: /okrs
+          - img [ref=e88]
+          - generic [ref=e92]: Desenvolvimento
+        - link "Relatórios" [ref=e93] [cursor=pointer]:
+          - /url: /relatorios
+          - img [ref=e94]
+          - generic [ref=e95]: Relatórios
+      - button "Sair" [ref=e97] [cursor=pointer]:
+        - img [ref=e98]
+        - generic [ref=e101]: Sair
+  - generic [ref=e102]:
+    - banner [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - button "Abrir/Fechar menu" [ref=e106] [cursor=pointer]:
+            - img [ref=e107]
+          - heading "Flow HUB - Sistema de Gestão Integrado" [level=2] [ref=e108]
+        - generic [ref=e109]:
+          - button "Modo escuro" [ref=e110] [cursor=pointer]:
+            - img [ref=e111]
+          - button "Buscar (Ctrl+K)" [ref=e113] [cursor=pointer]:
+            - img [ref=e114]
+          - button "3" [ref=e118] [cursor=pointer]:
+            - img [ref=e119]
+            - generic [ref=e122]: "3"
+          - button "João Silva João Silva admin" [ref=e124] [cursor=pointer]:
+            - img "João Silva" [ref=e125]
+            - generic [ref=e126]:
+              - paragraph [ref=e127]: João Silva
+              - paragraph [ref=e128]: admin
+    - main [ref=e129]:
+      - generic [ref=e131]:
+        - heading "Controle de Ponto" [level=3] [ref=e133]
+        - generic [ref=e134]:
+          - generic [ref=e136]:
+            - heading "Horário Atual" [level=3] [ref=e138]
+            - generic [ref=e139]:
+              - generic [ref=e140]:
+                - paragraph [ref=e141]: qua, 19/11/2025
+                - paragraph [ref=e142]: 17:18:51
+              - generic [ref=e143]:
+                - img [ref=e144]
+                - paragraph [ref=e146]: Registre sua entrada!
+              - generic [ref=e147]:
+                - generic [ref=e148]:
+                  - button "Entrada" [ref=e149] [cursor=pointer]
+                  - button "Saída" [ref=e150] [cursor=pointer]
+                - generic [ref=e151]:
+                  - button "Iniciar Intervalo" [ref=e152] [cursor=pointer]
+                  - button "Encerrar Intervalo" [ref=e153] [cursor=pointer]
+          - generic [ref=e154]:
+            - generic [ref=e155]:
+              - heading "Banco de Horas" [level=3] [ref=e156]
+              - generic [ref=e157]:
+                - button "Mensal" [ref=e158] [cursor=pointer]:
+                  - img [ref=e159]
+                  - text: Mensal
+                - button "Semanal" [ref=e162] [cursor=pointer]:
+                  - img [ref=e163]
+                  - text: Semanal
+            - generic [ref=e166]:
+              - generic [ref=e167]:
+                - generic [ref=e168]:
+                  - generic [ref=e169]:
+                    - img [ref=e170]
+                    - generic [ref=e173]: "Saldo:"
+                  - generic [ref=e174]: +0:00
+                  - generic [ref=e175]: Atualizado em 19/11/2025
+                - generic [ref=e176]:
+                  - generic [ref=e177]: "Média de Intervalo:"
+                  - generic [ref=e178]: 0h 00min
+              - generic [ref=e179]:
+                - generic [ref=e180]:
+                  - generic [ref=e181]:
+                    - generic [ref=e182]: "Progresso Mensal:"
+                    - generic [ref=e183]: "Meta: 176h"
+                  - generic [ref=e187]:
+                    - generic [ref=e188]: 0.0h
+                    - generic [ref=e189]: trabalhadas de
+                    - generic [ref=e190]: 176h
+                - generic [ref=e191]:
+                  - generic [ref=e192]: "Próximos Eventos:"
+                  - generic [ref=e193]:
+                    - generic [ref=e194]:
+                      - generic [ref=e195]: 20/11
+                      - generic [ref=e196]: Dia da consciência negra
+                    - generic [ref=e197]:
+                      - generic [ref=e198]: 25/12
+                      - generic [ref=e199]: Natal
+                    - generic [ref=e200]:
+                      - generic [ref=e201]: 01/01
+                      - generic [ref=e202]: Confraternização mundial
+        - generic [ref=e203]:
+          - generic [ref=e204]:
+            - heading "Espelho de Ponto" [level=3] [ref=e205]
+            - generic [ref=e206]:
+              - combobox [ref=e207]:
+                - option "Novembro 2024" [selected]
+                - option "Outubro 2024"
+                - option "Setembro 2024"
+              - button "Exportar CSV" [ref=e208] [cursor=pointer]:
+                - img [ref=e209]
+                - text: Exportar CSV
+          - generic [ref=e212]:
+            - img [ref=e214]
+            - heading "Nenhum registro este mês" [level=3] [ref=e216]
+            - paragraph [ref=e217]: Ainda não há registros de ponto para este mês.
+            - button "Registrar Ponto" [ref=e218] [cursor=pointer]
+```

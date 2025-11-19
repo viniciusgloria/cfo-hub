@@ -13,7 +13,7 @@ import { useDashboardStore } from '../store/dashboardStore';
 import { useTourStore } from '../store/tourStore';
 // import { useAuthStore } from '../store/authStore';
 import { Avatar } from '../components/Avatar';
-import { parseTimeToMinutes } from '../utils/time';
+// no utils import needed here
 
 const iconMap: Record<string, any> = {
   Clock,
@@ -139,7 +139,7 @@ export function Dashboard() {
       data.setDate(data.getDate() - i);
       const dataStr = data.toLocaleDateString('pt-BR');
       const registro = registros.find((r) => r.data === dataStr);
-      const minutos = registro ? parseTimeToMinutes(registro.total) || 0 : 0;
+      const minutos = registro ? registro.totalMinutos || 0 : 0;
       const horas = minutos / 60;
       
       dados.push({
@@ -268,18 +268,24 @@ export function Dashboard() {
           <Card className="p-3">
             <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-3">Últimos Registros</h3>
             <div className="space-y-2">
-              {registros.slice(0, 5).map((reg, idx) => (
-                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{reg.data}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Entrada: {reg.entrada} • Saída: {reg.saida}</p>
+              {registros.slice(0, 5).map((reg, idx) => {
+                const entradaPunch = (reg.punches || []).find((p: any) => p.type === 'entrada');
+                const saidaPunch = ([...(reg.punches || [])].reverse() as any[]).find((p) => p.type === 'saida');
+                const entrada = entradaPunch?.hhmm ?? '--:--';
+                const saida = saidaPunch?.hhmm ?? '--:--';
+                return (
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{reg.data}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Entrada: {entrada} • Saída: {saida}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium whitespace-nowrap">Entrada: {entrada}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium whitespace-nowrap">Saída: {saida}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium whitespace-nowrap">Entrada: {reg.entrada}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium whitespace-nowrap">Saída: {reg.saida}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="text-center pt-2">
                 <Link className="text-[#10B981] dark:text-green-400 text-xs font-medium hover:underline" to="/ponto">Ver todos os registros</Link>
               </div>

@@ -5,6 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { usePontoStore } from '../store/pontoStore';
+import { minutesToHHMM, formatBankMinutes } from '../utils/time';
 import { useSolicitacoesStore } from '../store/solicitacoesStore';
 import { useOKRsStore } from '../store/okrsStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
@@ -66,8 +67,17 @@ export function Relatorios() {
     switch (selectedType) {
       case 'ponto':
         csvContent = 'Data,Entrada,Saida,Intervalo,Total,Banco\n';
+        const expectedPerDay = 8 * 60;
         registros.forEach(r => {
-          csvContent += `${r.data},${r.entrada},${r.saida},${r.intervalo},${r.total},${r.banco}\n`;
+          const entradaPunch = (r.punches || []).find((p: any) => p.type === 'entrada');
+          const saidaPunch = ([...(r.punches || [])].reverse() as any[]).find((p) => p.type === 'saida');
+          const entrada = entradaPunch?.hhmm ?? '';
+          const saida = saidaPunch?.hhmm ?? '';
+          const intervaloMin = (r.intervals || []).reduce((s: number, it: any) => s + (it.duracaoMinutos || 0), 0);
+          const intervaloStr = intervaloMin > 0 ? minutesToHHMM(intervaloMin) : '';
+          const totalStr = typeof r.totalMinutos === 'number' ? minutesToHHMM(r.totalMinutos) : '';
+          const banco = formatBankMinutes((r.totalMinutos ?? 0) - expectedPerDay);
+          csvContent += `${r.data},${entrada},${saida},${intervaloStr},${totalStr},${banco}\n`;
         });
         filename = 'relatorio-ponto.csv';
         break;
