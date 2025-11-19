@@ -12,6 +12,8 @@ import { EscolhaTipoSolicitacaoModal } from '../components/EscolhaTipoSolicitaca
 import { usePontoStore } from '../store/pontoStore';
 import { useAuthStore } from '../store/authStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
+import { useReservasStore } from '../store/reservasStore';
+import { useMuralStore } from '../store/muralStore';
 import { parseTimeToMinutes } from '../utils/time';
 
 type ViewMode = 'mensal' | 'semanal';
@@ -26,6 +28,7 @@ export function Ponto() {
   const [atestadoAberto, setAtestadoAberto] = useState(false);
   const [escolhaAberta, setEscolhaAberta] = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState('');
+  const [proxEventos, setProxEventos] = useState<Array<{ date: string; name: string; tipo?: string; dateObj?: Date }>>([]);
   
   const { statusHoje, bancoHoras, registrarPonto, registros } = usePontoStore();
   const { user } = useAuthStore();
@@ -35,6 +38,136 @@ export function Ponto() {
   const colaboradorLogado = colaboradores.find((c) => c.email === user?.email);
   const metaHorasMensais = colaboradorLogado?.metaHorasMensais || 176;
 
+  const { reservas } = useReservasStore();
+  const { posts } = useMuralStore();
+
+  useEffect(() => {
+    const parseBRDate = (s: string) => {
+      if (!s) return null;
+      // ISO YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s + 'T00:00:00');
+      // BR format DD/MM/YYYY or DD/MM/YYYY HH:MM
+      const parts = s.split(' ')[0].split('/');
+      if (parts.length === 3) {
+        const [dd, mm, yyyy] = parts;
+        return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+      }
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const load = async () => {
+      try {
+        const hoje = new Date();
+        const anoAtual = hoje.getFullYear();
+        const mesAtual = hoje.getMonth();
+
+        // Fetch feriados (ano atual e próximo para garantir cobertura)
+        let feriadosRaw: Array<{ date: string; name: string }> = [];
+        for (const ano of [anoAtual, anoAtual + 1]) {
+          try {
+            const res = await fetch(`https://brasilapi.com.br/api/feriados/v1/${ano}`);
+            if (!res.ok) continue;
+            const json = await res.json();
+            feriadosRaw = feriadosRaw.concat(json.map((h: any) => ({ date: h.date, name: h.name })));
+          } catch (err) {
+            // continue on individual year error
+            console.error('Erro carregando feriados ano', ano, err);
+          }
+        }
+
+        // Mapar reservas do sistema (construir Date no fuso local a partir de YYYY-MM-DD)
+        const reservasEventos = (reservas || [])
+          .filter((r: any) => r.status === 'ativa')
+          .map((r: any) => {
+            const parts = String(r.data || '').split('-');
+            let dateObj: Date | null = null;
+            if (parts.length === 3) {
+              const [y, m, d] = parts;
+              dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+            } else {
+              dateObj = new Date(r.data + 'T00:00:00');
+            }
+            return {
+              dateISO: r.data,
+              dateObj,
+              name: r.motivo || (r.tipoSala === 'call' ? 'Reserva Sala (Call)' : 'Reserva Sala'),
+              tipo: 'reserva' as const,
+            };
+          });
+
+        // Mapar posts de comemoração (quando houver)
+        const comemoracoes = (posts || [])
+          .filter((p: any) => p.type === 'comemoracao')
+          .map((p: any) => {
+            const d = parseBRDate(p.createdAt || p.createdAtString || '');
+            if (!d) return null;
+            return {
+              dateISO: d.toISOString().slice(0, 10),
+              dateObj: d,
+              name: p.content ? (typeof p.content === 'string' ? p.content : String(p.content)) : p.author || 'Comemoração',
+              tipo: 'comemoracao' as const,
+            };
+          })
+          .filter(Boolean) as Array<any>;
+
+        const feriados = feriadosRaw.map((f) => {
+          // f.date is expected as YYYY-MM-DD — construir Date no fuso local para evitar off-by-one
+          const parts = String(f.date || '').split('-');
+          let dateObj: Date;
+          if (parts.length === 3) {
+            const [y, m, d] = parts;
+            dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+          } else {
+            dateObj = new Date(f.date + 'T00:00:00');
+          }
+          return {
+            dateISO: f.date,
+            dateObj,
+            name: f.name,
+            tipo: 'feriado' as const,
+          };
+        });
+
+        // Combinar todas as fontes
+        const todas = [...feriados, ...reservasEventos, ...comemoracoes]
+          .filter((e) => e.dateObj && e.dateObj >= new Date(new Date().setHours(0, 0, 0, 0)))
+          .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+
+        // Selecionar eventos do mês atual (a partir de hoje)
+        const desteMes = todas.filter(
+          (e) => e.dateObj.getMonth() === mesAtual && e.dateObj.getFullYear() === anoAtual
+        );
+
+        let selecionados: Array<any> = [];
+        selecionados = desteMes.slice(0, 3);
+
+        // Se menos de 3, preencher com eventos do mês seguinte
+        if (selecionados.length < 3) {
+          const proximoMesNum = (mesAtual + 1) % 12;
+          const proximoAno = mesAtual === 11 ? anoAtual + 1 : anoAtual;
+          const doProximoMes = todas.filter(
+            (e) => e.dateObj.getMonth() === proximoMesNum && e.dateObj.getFullYear() === proximoAno
+          );
+          selecionados = [...selecionados, ...doProximoMes.slice(0, 3 - selecionados.length)];
+        }
+
+        // Se ainda faltarem, preencher com próximos eventos disponíveis
+        if (selecionados.length < 3) {
+          const restantes = todas.filter((e) => !selecionados.includes(e)).slice(0, 3 - selecionados.length);
+          selecionados = [...selecionados, ...restantes];
+        }
+
+        setProxEventos(
+          selecionados.map((e) => ({ date: e.dateISO, name: e.name, tipo: e.tipo, dateObj: e.dateObj }))
+        );
+      } catch (err) {
+        console.error('Erro ao montar próximos eventos:', err);
+      }
+    };
+
+    load();
+  }, [reservas, posts]);
   useEffect(() => {
     const updateTime = () => {
       setTime(
@@ -331,18 +464,22 @@ export function Ponto() {
                     <div className="flex flex-col">
                       <span className="text-base font-semibold text-gray-700 mb-3">Próximos Eventos:</span>
                       <div className="flex flex-wrap gap-4">
-                        <div className="flex flex-col items-center justify-center w-32 h-24 p-3 rounded-lg bg-blue-50">
-                          <span className="font-bold text-blue-700 text-lg">20/11</span>
-                          <span className="text-xs text-gray-700 mt-1 text-center">Proclamação da República</span>
-                        </div>
-                        <div className="flex flex-col items-center justify-center w-32 h-24 p-3 rounded-lg bg-blue-50">
-                          <span className="font-bold text-blue-700 text-lg">02/11</span>
-                          <span className="text-xs text-gray-700 mt-1">Finados</span>
-                        </div>
-                        <div className="flex flex-col items-center justify-center w-32 h-24 p-3 rounded-lg bg-purple-50">
-                          <span className="font-bold text-purple-700 text-lg">15/11</span>
-                          <span className="text-xs text-gray-700 mt-1 text-center">Reunião de Equipe</span>
-                        </div>
+                        {proxEventos && proxEventos.length > 0 ? (
+                          proxEventos.map((e, idx) => {
+                            const bg = e.tipo === 'feriado' ? 'bg-blue-50' : e.tipo === 'reserva' ? 'bg-purple-50' : e.tipo === 'comemoracao' ? 'bg-pink-50' : 'bg-gray-50';
+                            const text = e.tipo === 'feriado' ? 'text-blue-700' : e.tipo === 'reserva' ? 'text-purple-700' : e.tipo === 'comemoracao' ? 'text-pink-700' : 'text-gray-700';
+                            return (
+                              <div key={idx} className={`flex flex-col items-center justify-center w-32 h-24 p-3 rounded-lg ${bg}`}>
+                                <span className={`font-bold ${text} text-lg`}>
+                                        {(e.dateObj ?? new Date(e.date)).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                </span>
+                                <span className="text-xs text-gray-700 mt-1 text-center">{e.name}</span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-sm text-gray-500">Nenhum evento encontrado</div>
+                        )}
                       </div>
                     </div>
                   </div>
