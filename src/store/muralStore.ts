@@ -87,7 +87,12 @@ export const useMuralStore = create<MuralState>()(
           myReactions: {},
           comments: [],
         };
-        set({ posts: [next, ...posts] });
+        const newPosts = [next, ...posts];
+        // Mantém no máximo 30 publicações: remove as mais antigas quando exceder
+        if (newPosts.length > 30) {
+          newPosts.length = 30;
+        }
+        set({ posts: newPosts });
       },
       toggleReaction: (postId, reaction) => {
         set(({ posts }) => ({

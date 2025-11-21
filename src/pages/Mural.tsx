@@ -43,6 +43,18 @@ export function Mural() {
   } = useAttachmentUploader();
 
   const filtered = filter === 'Todos' ? posts : posts.filter(p => p.type === filter);
+  const POSTS_PER_PAGE = 8;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / POSTS_PER_PAGE));
+  useEffect(() => {
+    // reset to first page when filter changes
+    setCurrentPage(1);
+  }, [filter]);
+  useEffect(() => {
+    // if current page goes beyond total pages (after deletions), clamp it
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+  const paginated = filtered.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE);
   const [isLoading, setIsLoading] = useState(true);
 
   // Early-return guard: if posts is undefined/null due to store migration/corruption, render fallback
@@ -181,11 +193,19 @@ export function Mural() {
             <SkeletonCard />
           </div>
         ) : (
-          filtered.map((p) => (
+          paginated.map((p) => (
             <PostCard key={p.id} postId={p.id} />
           ))
         )}
       </div>
+
+      {filtered.length > POSTS_PER_PAGE && (
+        <div className="flex items-center justify-center mt-4 gap-3">
+          <Button disabled={currentPage === 1} onClick={() => setCurrentPage((c) => Math.max(1, c - 1))}>Anterior</Button>
+          <div className="text-sm text-gray-600">Página {currentPage} de {totalPages}</div>
+          <Button disabled={currentPage === totalPages} onClick={() => setCurrentPage((c) => Math.min(totalPages, c + 1))}>Próxima</Button>
+        </div>
+      )}
 
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Nova Postagem">
         <div className="space-y-4">

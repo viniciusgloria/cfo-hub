@@ -90,11 +90,21 @@ export function PostCard({ postId }: Props) {
             </div>
 
             <div className="mt-4 flex items-center gap-2">
-              <input
+              <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Escrever um comentario..."
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (comment.trim()) {
+                      addComment(post.id, 'Voce', comment.trim());
+                      setComment('');
+                    }
+                  }
+                }}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg resize-none"
+                rows={1}
+                aria-label="Escrever comentário"
               />
               <Button
                 variant="ghost"
