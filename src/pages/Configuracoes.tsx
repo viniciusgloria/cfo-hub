@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Card } from '../components/ui/Card';
+// Card removed: no longer needed after maintenance UI removal
+import PageBanner from '../components/ui/PageBanner';
 import { Tabs } from '../components/ui/Tabs';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Modal } from '../components/ui/Modal';
-import { resetStores, PersistKey } from '../store/resetHelpers';
+// removed resetHelpers import after removing maintenance UI
 import { FormError } from '../components/ui/FormError';
 import { isValidCNPJ, maxLength } from '../utils/validation';
 import toast from 'react-hot-toast';
@@ -22,7 +23,7 @@ export function Configuracoes() {
   const [isSavingJornada, setIsSavingJornada] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toRemoveUser, setToRemoveUser] = useState<string | null>(null);
-  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ name: string; email: string; role: string }>({ name: '', email: '', role: 'colaborador' });
 
@@ -50,41 +51,7 @@ export function Configuracoes() {
     setEditUserId(null);
   };
 
-  const [selected, setSelected] = useState<Record<PersistKey, boolean>>({
-    auth: true,
-    ponto: true,
-    solicitacoes: true,
-    'ajustes-ponto': true,
-    okrs: true,
-    feedbacks: true,
-    mural: true,
-    colaboradores: true,
-    clientes: true,
-    dashboard: true,
-    empresa: true,
-    reservas: true,
-    notificacoes: true,
-  });
-
-  const toggleSelect = (k: PersistKey) => setSelected((s) => ({ ...s, [k]: !s[k] }));
-  const selectAll = (v: boolean) => setSelected((s) => Object.keys(s).reduce((acc, key) => ({ ...acc, [key]: v }), {} as Record<PersistKey, boolean>));
-
-  const handleConfirmClear = (_reason?: string) => {
-    const keys = (Object.keys(selected).filter((k) => selected[k as PersistKey]) as PersistKey[]);
-    if (!keys.length) {
-      toast('Nenhum store selecionado', { icon: '⚠️' });
-      setConfirmClearOpen(false);
-      return;
-    }
-    try {
-      resetStores(keys);
-      toast.success('Dados restaurados aos mocks.');
-    } catch (e) {
-      console.error('Erro ao limpar dados:', e);
-      toast.error('Falha ao limpar dados. Veja o console.');
-    }
-    setConfirmClearOpen(false);
-  };
+  
 
   // validate empresa form on save
   const handleSaveEmpresa = () => {
@@ -117,12 +84,9 @@ export function Configuracoes() {
   const [touchedJornada, setTouchedJornada] = useState({ inicio: false, fim: false });
 
   return (
-    <div className="p-6">
-      <Card className="p-4 flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold">Configurações</h3>
-      </Card>
-      <Card>
-        <Tabs
+    <div className="space-y-6">
+      <PageBanner title="Configurações" />
+      <Tabs
           tabs={[
             { id: 'empresa', label: 'Empresa' },
             { id: 'jornada', label: 'Jornada' },
@@ -232,8 +196,7 @@ export function Configuracoes() {
           )}
 
 
-        // Modal simples no final do componente (fora do return principal)
-        // Inserido após o export function para manter consistência de arquivo
+        
 
           {active === 'permissoes' && (
             <div className="mt-4 space-y-6">
@@ -326,36 +289,10 @@ export function Configuracoes() {
             <div className="text-sm text-gray-600 mt-4">Integrações e webhooks (mock)</div>
           )}
         </Tabs>
-      </Card>
 
-      <Card className="mt-4">
-        <h3 className="text-sm font-medium text-gray-800">Manutenção de dados</h3>
-        <p className="text-sm text-gray-600 mt-2">Escolha quais dados persistidos você quer limpar. Os stores selecionados serão restaurados aos dados mock.</p>
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center gap-3">
-            <input id="selectAll" type="checkbox" checked={Object.values(selected).every(Boolean)} onChange={(e) => selectAll(e.target.checked)} />
-            <label htmlFor="selectAll" className="text-sm">Selecionar todos</label>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.auth} onChange={() => toggleSelect('auth')} /> Auth (sessão)</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.ponto} onChange={() => toggleSelect('ponto')} /> Ponto</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.solicitacoes} onChange={() => toggleSelect('solicitacoes')} /> Solicitações</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.okrs} onChange={() => toggleSelect('okrs')} /> OKRs</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.feedbacks} onChange={() => toggleSelect('feedbacks')} /> Feedbacks</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.mural} onChange={() => toggleSelect('mural')} /> Mural</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.colaboradores} onChange={() => toggleSelect('colaboradores')} /> Colaboradores</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.clientes} onChange={() => toggleSelect('clientes')} /> Clientes</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected['ajustes-ponto']} onChange={() => toggleSelect('ajustes-ponto')} /> Ajustes Ponto</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.dashboard} onChange={() => toggleSelect('dashboard')} /> Dashboard</label>
-          </div>
-          <div className="mt-3">
-            <Button variant="outline" className="text-red-600 border-red-200" onClick={() => setConfirmClearOpen(true)} disabled={!Object.values(selected).some(Boolean)}>Limpar dados selecionados</Button>
-          </div>
-        </div>
-      </Card>
+      {/* Manutenção de dados removida */}
 
       <ConfirmModal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} onConfirm={handleConfirmRemove} title="Remover usuário" />
-      <ConfirmModal isOpen={confirmClearOpen} onClose={() => setConfirmClearOpen(false)} onConfirm={handleConfirmClear} title="Limpar dados persistidos" />
 
       {/* Modal Editar Usuário */}
       <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} title="Editar Usuário">
