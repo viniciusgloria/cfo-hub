@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Clock, CheckCircle, XCircle, Paperclip, ImageIcon, X } from 'lucide-react';
 import { Card } from '../components/ui/Card';
+import PageBanner from '../components/ui/PageBanner';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
@@ -140,9 +141,9 @@ export function SolicitacoesPonto() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors text-gray-800 dark:text-gray-100 p-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Aprovações de Ponto</h1>
-        {isAprovador && selectedIds.length > 0 && (
+      <PageBanner
+        title="Aprovações de Ponto"
+        right={isAprovador && selectedIds.length > 0 ? (
           <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg dark:bg-transparent">
             <span className="text-sm text-gray-700 dark:text-white">{selectedIds.length} selecionada(s)</span>
             <div className="flex gap-2">
@@ -150,8 +151,8 @@ export function SolicitacoesPonto() {
               <Button onClick={handleBulkReject} variant="outline" className="text-sm border-red-300 text-red-600">Rejeitar</Button>
             </div>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {isLoading ? (

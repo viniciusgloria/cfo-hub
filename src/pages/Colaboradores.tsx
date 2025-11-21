@@ -3,6 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit } from 'lucide-react';
 import { Card } from '../components/ui/Card';
+import PageBanner from '../components/ui/PageBanner';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Tabs } from '../components/ui/Tabs';
@@ -72,29 +73,29 @@ export function Colaboradores() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-2xl font-bold">Colaboradores</h3>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-2">
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <Input
-              className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
-              placeholder="Buscar por nome"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
-          </span>
-          <Button variant="outline" onClick={() => { setBusca(''); }}>Limpar</Button>
-          {podeGerenciarUsuarios && (
-            <Button onClick={() => navigate('/colaboradores/cadastro')} className="flex items-center gap-2">
-              <Plus size={18} />
-              Novo Colaborador
-            </Button>
-          )}
-        </div>
-      </Card>
+      <PageBanner
+        title="Colaboradores"
+        right={(
+          <>
+            <span className="flex items-center gap-2">
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <Input
+                className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
+                placeholder="Buscar por nome"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+              />
+            </span>
+            <Button variant="outline" onClick={() => { setBusca(''); }}>Limpar</Button>
+            {podeGerenciarUsuarios && (
+              <Button onClick={() => navigate('/colaboradores/cadastro')} className="flex items-center gap-2">
+                <Plus size={18} />
+                Novo Colaborador
+              </Button>
+            )}
+          </>
+        )}
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

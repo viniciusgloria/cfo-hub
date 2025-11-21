@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import PageBanner from '../components/ui/PageBanner';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { ProgressBar, CircularProgress } from '../components/ui/ProgressBar';
@@ -201,28 +202,30 @@ export function OKRs() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <h3 className="text-2xl font-bold">Acompanhar Desenvolvimento</h3>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-md">
-            <Filter size={16} className="text-gray-500" />
-            <select
-              value={trimestre}
-              onChange={(e) => setTrimestre(e.target.value)}
-              className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
-            >
-              <option>Q4 2024</option>
-              <option>Q3 2024</option>
-              <option>Q2 2024</option>
-              <option>Q1 2024</option>
-            </select>
-          </div>
-          <Button onClick={() => setIsNovoModal(true)} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nova Meta
-          </Button>
-        </div>
-      </Card>
+      <PageBanner
+        title="Acompanhar Desenvolvimento"
+        right={(
+          <>
+            <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-md">
+              <Filter size={16} className="text-gray-500" />
+              <select
+                value={trimestre}
+                onChange={(e) => setTrimestre(e.target.value)}
+                className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
+              >
+                <option>Q4 2024</option>
+                <option>Q3 2024</option>
+                <option>Q2 2024</option>
+                <option>Q1 2024</option>
+              </select>
+            </div>
+            <Button onClick={() => setIsNovoModal(true)} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nova Meta
+            </Button>
+          </>
+        )}
+      />
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         <div className="space-y-6">

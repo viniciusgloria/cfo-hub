@@ -4,9 +4,11 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import PlaceAutocomplete from '../components/ui/PlaceAutocomplete';
 import { Badge } from '../components/ui/Badge';
 import { ReservaSalaModal } from '../components/ReservaSalaModal';
 import { useReservasStore } from '../store/reservasStore';
+import { PageBanner } from '../components/ui/PageBanner';
 
 interface Evento {
   id: number;
@@ -156,19 +158,22 @@ export function Calendario() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <h3 className="text-2xl font-bold">Calendário</h3>
-        <div className="flex gap-3">
-          <Button onClick={() => setReservaModalOpen(true)} variant="outline" className="flex items-center gap-2">
-            <CalendarIcon size={18} />
-            Reservar Sala
-          </Button>
-          <Button onClick={() => setNovoEventoOpen(true)} className="flex items-center gap-2">
-            <Plus size={18} />
-            Novo Evento
-          </Button>
-        </div>
-      </Card>
+      <PageBanner
+        title="Calendário"
+        style={{ minHeight: '64px' }}
+        right={(
+          <>
+            <Button onClick={() => setReservaModalOpen(true)} variant="outline" className="flex items-center gap-2">
+              <CalendarIcon size={18} />
+              Reservar Sala
+            </Button>
+            <Button onClick={() => setNovoEventoOpen(true)} className="flex items-center gap-2">
+              <Plus size={18} />
+              Novo Evento
+            </Button>
+          </>
+        )}
+      />
 
       <Card className="p-6">
         {/* Navegação do mês */}
@@ -354,11 +359,15 @@ export function Calendario() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Local
             </label>
-            <Input
+            <PlaceAutocomplete
               placeholder="Local do evento"
               leftIcon={<MapPin size={18} />}
               value={novoEvento.local}
               onChange={e => setNovoEvento({ ...novoEvento, local: e.target.value })}
+              onSelect={(place) => {
+                // ao selecionar, preenche o campo com o nome completo do lugar
+                setNovoEvento(prev => ({ ...prev, local: place.display_name }));
+              }}
             />
           </div>
           <div>

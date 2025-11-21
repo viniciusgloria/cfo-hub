@@ -3,6 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { Search, RefreshCw, Filter } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
+import { PageBanner } from '../components/ui/PageBanner';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -94,42 +95,47 @@ export function Clientes() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <h3 className="text-2xl font-bold">Painel de Clientes</h3>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 p-2 rounded-md">
-            <Search size={16} className="text-gray-500" />
-            <Input
-              className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
-              placeholder="Buscar cliente..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
-            <div className="flex items-center gap-1">
-              <Filter size={16} className="text-gray-500" />
-              <select
-                value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
-                className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
+      <PageBanner
+        title="Clientes"
+        style={{ minHeight: '64px' }}
+        right={(
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 p-2 rounded-md">
+                <Search size={16} className="text-gray-500" />
+                <Input
+                  className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
+                  placeholder="Buscar cliente..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                />
+                <div className="flex items-center gap-1">
+                  <Filter size={16} className="text-gray-500" />
+                  <select
+                    value={filtroStatus}
+                    onChange={(e) => setFiltroStatus(e.target.value)}
+                    className="bg-transparent text-sm outline-none px-2 py-1 rounded-md border border-gray-200"
+                  >
+                    <option>Todos</option>
+                    <option value="ativo">Ativos</option>
+                    <option value="pausado">Pausados</option>
+                    <option value="encerrado">Encerrados</option>
+                  </select>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="flex items-center gap-2"
               >
-                <option>Todos</option>
-                <option value="ativo">Ativos</option>
-                <option value="pausado">Pausados</option>
-                <option value="encerrado">Encerrados</option>
-              </select>
+                <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+                Sincronizar OMIE
+              </Button>
             </div>
-          </div>
-          <Button
-            variant="secondary"
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
-            Sincronizar OMIE
-          </Button>
-        </div>
-      </Card>
+          </>
+        )}
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

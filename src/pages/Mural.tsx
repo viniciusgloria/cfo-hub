@@ -3,6 +3,7 @@ import { Plus, ImageIcon, Filter } from 'lucide-react';
 import { Dropzone } from '../components/ui/Dropzone';
 import FilterPill from '../components/ui/FilterPill';
 import { Card } from '../components/ui/Card';
+import { PageBanner } from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 // Input removed (not used)
@@ -13,25 +14,13 @@ import { SkeletonCard } from '../components/ui/SkeletonCard';
 import { useAttachmentUploader } from '../hooks/useAttachmentUploader';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { useNotificacoesStore } from '../store/notificacoesStore';
+import type { PostType } from '../store/muralStore';
 
 export function Mural() {
-  const posts = useMuralStore((s) => s.posts);
-  const filter = useMuralStore((s) => s.filter);
-  const setFilter = useMuralStore((s) => s.setFilter);
-  const addPost = useMuralStore((s) => s.addPost);
+  const { posts, filter, setFilter, addPost } = useMuralStore();
+  const { colaboradores } = useColaboradoresStore();
+  const { adicionarNotificacao } = useNotificacoesStore();
 
-  const allColaboradores = useColaboradoresStore((s) => s.colaboradores);
-  const colaboradores = useMemo(() => allColaboradores.filter(c => c.status === 'ativo'), [allColaboradores]);
-  const addNotificacao = useNotificacoesStore((s) => s.adicionarNotificacao);
-
-  const [open, setOpen] = useState(false);
-  const [type, setType] = useState<'anuncio'|'feedback'|'atualizacao'|'comemoracao'>('anuncio');
-  const [content, setContent] = useState('');
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const [mentionListOpen, setMentionListOpen] = useState(false);
-  const [mentionStart, setMentionStart] = useState<number | null>(null);
-  const emojis = ['🎉', '👏', '🥳', '🏆', '🎂', '💡', '🚀', '❤️', '😃', '🌟'];
   const {
     attachments,
     readyAttachments,
@@ -42,39 +31,36 @@ export function Mural() {
     hasError,
   } = useAttachmentUploader();
 
-  const filtered = filter === 'Todos' ? posts : posts.filter(p => p.type === filter);
+  const filtered = filter === 'Todos' ? posts : posts.filter((p) => p.type === filter as PostType);
   const POSTS_PER_PAGE = 8;
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(filtered.length / POSTS_PER_PAGE));
   useEffect(() => {
-    // reset to first page when filter changes
     setCurrentPage(1);
   }, [filter]);
   useEffect(() => {
-    // if current page goes beyond total pages (after deletions), clamp it
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
   const paginated = filtered.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Early-return guard: if posts is undefined/null due to store migration/corruption, render fallback
-  if (!Array.isArray(posts)) {
-    return (
-      <div className="p-6 text-center text-gray-500">
-        <p>Erro ao carregar o mural. Tente recarregar a página.</p>
-      </div>
-    );
-  }
+  // UI states for creating a post
+  const [open, setOpen] = useState(false);
+  const [content, setContent] = useState('');
+  const [type, setType] = useState<PostType>('anuncio');
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionListOpen, setMentionListOpen] = useState(false);
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const emojis = ['😀', '🎉', '👍', '❤️', '🚀'];
 
   useEffect(() => {
-    // simulate initial load to demonstrate skeletons
     const t = setTimeout(() => setIsLoading(false), 450);
     return () => clearTimeout(t);
   }, []);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Usa ChangeEvent importado para evitar referência runtime a React undefined
   function handleContentChange(e: ChangeEvent<HTMLTextAreaElement>) {
     const value = e.target.value;
     setContent(value);
@@ -102,9 +88,7 @@ export function Mural() {
       setMentionQuery('');
       setMentionStart(null);
       setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-        }
+        if (textareaRef.current) textareaRef.current.focus();
       }, 0);
     }
   }
@@ -112,7 +96,7 @@ export function Mural() {
   function getMentions(text: string) {
     const regex = /@([\w\u00C0-\u017F]+)/g;
     const found: string[] = [];
-    let m;
+    let m: RegExpExecArray | null;
     while ((m = regex.exec(text))) {
       found.push(m[1]);
     }
@@ -140,11 +124,11 @@ export function Mural() {
       avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=Voce',
       attachments: readyAttachments,
     });
-    // Notificações para mencionados
+
     const mencionados = getMentions(content);
     colaboradores.forEach((c) => {
       if (mencionados.includes(c.nome)) {
-        addNotificacao({
+        adicionarNotificacao({
           tipo: 'nova_mensagem_mural',
           titulo: 'Você foi mencionado no Mural',
           mensagem: `Você foi mencionado por Voce em uma publicação: "${content.trim()}"`,
@@ -154,37 +138,48 @@ export function Mural() {
         });
       }
     });
+
     setContent('');
     resetAttachments();
     setOpen(false);
     toast.success('Publicacao criada');
   }
 
+  // Early-return guard: if posts is undefined/null due to store migration/corruption, render fallback
+  if (!Array.isArray(posts)) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        <p>Erro ao carregar o mural. Tente recarregar a página.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-2xl font-bold">Mural</h3>
-        </div>
-          <div className="flex items-center gap-3">
-          <FilterPill
-            icon={<Filter size={16} />}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            options={[
-              { value: 'Todos', label: 'Todos' },
-              { value: 'anuncio', label: 'Anúncios' },
-              { value: 'feedback', label: 'Feedbacks' },
-              { value: 'atualizacao', label: 'Atualizações' },
-              { value: 'comemoracao', label: 'Comemorações' },
-            ]}
-          />
-          <Button onClick={() => setOpen(true)} className="flex items-center gap-2 whitespace-nowrap">
-            <Plus size={16} />
-            Novo Post
-          </Button>
-        </div>
-      </Card>
+      <PageBanner
+        title="Mural"
+        style={{ minHeight: '64px' }}
+        right={(
+          <>
+            <FilterPill
+              icon={<Filter size={16} />}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as any)}
+              options={[
+                { value: 'Todos', label: 'Todos' },
+                { value: 'anuncio', label: 'Anúncios' },
+                { value: 'feedback', label: 'Feedbacks' },
+                { value: 'atualizacao', label: 'Atualizações' },
+                { value: 'comemoracao', label: 'Comemorações' },
+              ]}
+            />
+            <Button onClick={() => setOpen(true)} className="flex items-center gap-2 whitespace-nowrap">
+              <Plus size={16} />
+              Novo Post
+            </Button>
+          </>
+        )}
+      />
 
       <div className="space-y-4">
         {isLoading ? (
@@ -211,7 +206,7 @@ export function Mural() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm text-emerald-600 font-medium mb-1">Tipo</label>
-            <select value={type} onChange={(e) => setType(e.target.value as any)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-200">
+            <select value={type} onChange={(e) => setType(e.target.value as PostType)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-200">
               <option value="anuncio">Anúncio</option>
               <option value="feedback">Feedback</option>
               <option value="atualizacao">Atualização</option>
@@ -248,7 +243,7 @@ export function Mural() {
               )}
               {mentionListOpen && (
                 <div className="absolute top-10 left-0 bg-white border border-gray-200 rounded shadow z-20 w-64 max-h-48 overflow-auto">
-                  {colaboradores.filter(c => c.nome.toLowerCase().includes(mentionQuery.toLowerCase())).map((c) => (
+                  {colaboradores.filter((c) => c.nome.toLowerCase().includes(mentionQuery.toLowerCase())).map((c) => (
                     <button
                       key={c.id}
                       type="button"
@@ -258,7 +253,7 @@ export function Mural() {
                       <span className="font-medium">@{c.nome}</span> <span className="text-xs text-gray-500">{c.cargo}</span>
                     </button>
                   ))}
-                  {colaboradores.filter(c => c.nome.toLowerCase().includes(mentionQuery.toLowerCase())).length === 0 && (
+                  {colaboradores.filter((c) => c.nome.toLowerCase().includes(mentionQuery.toLowerCase())).length === 0 && (
                     <div className="px-3 py-2 text-sm text-gray-400">Nenhum usuário encontrado</div>
                   )}
                 </div>
@@ -274,61 +269,61 @@ export function Mural() {
           </div>
 
 
-            <div>
-              <div className="flex-1">
-                <label className="flex items-center gap-2 text-emerald-600">
-                  <ImageIcon className="text-emerald-500" />
-                  <span className="text-sm font-medium text-emerald-700">Anexos (imagens ou arquivos)</span>
-                </label>
-                <div className="mt-2">
-                  <Dropzone onFiles={handleFiles} />
-                </div>
+          <div>
+            <div className="flex-1">
+              <label className="flex items-center gap-2 text-emerald-600">
+                <ImageIcon className="text-emerald-500" />
+                <span className="text-sm font-medium text-emerald-700">Anexos (imagens ou arquivos)</span>
+              </label>
+              <div className="mt-2">
+                <Dropzone onFiles={handleFiles} />
+              </div>
 
-                {attachments.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {attachments.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between gap-3 border rounded-md p-2 bg-gray-50">
-                        <div className="flex items-center gap-3">
-                          {a.mimeType.startsWith('image/') ? (
-                            <img src={a.dataUrl} alt={a.name} className="w-16 h-12 object-cover rounded" />
-                          ) : (
-                            <div className="w-16 h-12 flex items-center justify-center bg-gray-100 rounded text-sm">PDF</div>
-                          )}
-                          <div className="text-sm w-full">
-                            <div className="truncate max-w-[240px]">{a.name}</div>
-                            <div className="text-xs text-emerald-700 flex items-center justify-between">
-                              <span>{(a.size / 1024 / 1024).toFixed(2)} MB {a.status === 'error' ? `· Erro: ${a.error}` : ''}</span>
-                              <span className="ml-2">{a.status === 'uploading' ? 'Enviando…' : a.status === 'done' ? 'Pronto' : ''}</span>
-                            </div>
-                            <div className="w-full bg-gray-200 h-1 rounded mt-2 overflow-hidden">
-                              <div className="bg-emerald-500 h-1" style={{ width: `${a.progress}%` }} />
-                            </div>
+              {attachments.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {attachments.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-3 border rounded-md p-2 bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        {a.mimeType.startsWith('image/') ? (
+                          <img src={a.dataUrl} alt={a.name} className="w-16 h-12 object-cover rounded" />
+                        ) : (
+                          <div className="w-16 h-12 flex items-center justify-center bg-gray-100 rounded text-sm">PDF</div>
+                        )}
+                        <div className="text-sm w-full">
+                          <div className="truncate max-w-[240px]">{a.name}</div>
+                          <div className="text-xs text-emerald-700 flex items-center justify-between">
+                            <span>{(a.size / 1024 / 1024).toFixed(2)} MB {a.status === 'error' ? `· Erro: ${a.error}` : ''}</span>
+                            <span className="ml-2">{a.status === 'uploading' ? 'Enviando…' : a.status === 'done' ? 'Pronto' : ''}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 h-1 rounded mt-2 overflow-hidden">
+                            <div className="bg-emerald-500 h-1" style={{ width: `${a.progress}%` }} />
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button type="button" className="text-red-600 text-xs" onClick={() => removeAttachment(a.id)}>Remover</button>
-                        </div>
                       </div>
-                    ))}
-                    <div className="text-xs text-emerald-700">Total: {(attachments.reduce((s, a) => s + (a.size || 0), 0) / 1024 / 1024).toFixed(2)} MB</div>
-                    {attachments.some((a) => a.status === 'error') && <div className="text-xs text-red-600">Remova anexos inválidos antes de prosseguir.</div>}
-                    {isUploading && <div className="text-xs text-emerald-600">Enviando anexos...</div>}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setOpen(false)} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">Cancelar</Button>
-                <Button
-                  onClick={handlePublish}
-                  disabled={isUploading}
-                  title={isUploading ? 'Aguardando upload dos anexos' : undefined}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  Publicar
-                </Button>
-              </div>
+                      <div className="flex items-center gap-2">
+                        <button type="button" className="text-red-600 text-xs" onClick={() => removeAttachment(a.id)}>Remover</button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="text-xs text-emerald-700">Total: {(attachments.reduce((s, a) => s + (a.size || 0), 0) / 1024 / 1024).toFixed(2)} MB</div>
+                  {attachments.some((a) => a.status === 'error') && <div className="text-xs text-red-600">Remova anexos inválidos antes de prosseguir.</div>}
+                  {isUploading && <div className="text-xs text-emerald-600">Enviando anexos...</div>}
+                </div>
+              )}
             </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">Cancelar</Button>
+              <Button
+                onClick={handlePublish}
+                disabled={isUploading}
+                title={isUploading ? 'Aguardando upload dos anexos' : undefined}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                Publicar
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

@@ -5,6 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Avatar } from '../components/Avatar';
+import { PageBanner } from '../components/ui/PageBanner';
 import { useChatStore } from '../store/chatStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { useAuthStore } from '../store/authStore';
@@ -83,10 +84,11 @@ export function Chat() {
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)]">
-      <Card className="p-4 flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold">Chat</h3>
-      </Card>
+    <div className="h-[calc(100vh-8rem)] space-y-6">
+      <PageBanner
+        title="Chat"
+        style={{ minHeight: '64px' }}
+      />
 
       <div className="grid grid-cols-12 gap-4 h-[calc(100%-5rem)]">
         {/* Lista de conversas */}

@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight, Filter, XCircle, CheckCircle } from 'lucide-react';
 import FilterPill from '../components/ui/FilterPill';
 import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { PageBanner } from '../components/ui/PageBanner';
+import { Badge } from '../components/ui/Badge';
 import { SolicitacaoPontoModal } from '../components/SolicitacaoPontoModal';
 import { AtestadoModal } from '../components/AtestadoModal';
 import { EscolhaTipoSolicitacaoModal } from '../components/EscolhaTipoSolicitacaoModal';
@@ -35,7 +37,6 @@ export function Ponto() {
   const {
     registros,
     bancoHoras = '+0:00',
-    statusHoje,
     setFeriados,
     registrarEntrada,
     registrarInicioIntervalo,
@@ -56,6 +57,27 @@ export function Ponto() {
 
   const { reservas } = useReservasStore();
   const { posts } = useMuralStore();
+
+  // Local alert state (message shown in the main status Badge)
+  const [localAlert, setLocalAlert] = useState<{ type: 'error' | 'success' | 'info'; message: string } | null>(null);
+  const alertTimerRef = useRef<number | null>(null);
+  // default timeout 10s as requested
+  const showLocalAlert = (type: 'error' | 'success' | 'info', message: string, timeout = 10000) => {
+    setLocalAlert({ type, message });
+    if (alertTimerRef.current) {
+      window.clearTimeout(alertTimerRef.current);
+    }
+    alertTimerRef.current = window.setTimeout(() => setLocalAlert(null), timeout);
+  };
+
+  // clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (alertTimerRef.current) {
+        window.clearTimeout(alertTimerRef.current);
+      }
+    };
+  }, []);
 
   // Helper: parse date strings in registros (expecting DD/MM/YYYY or ISO)
   const parseRegistroDate = (s: string) => {
@@ -272,10 +294,10 @@ export function Ponto() {
         let res;
         if (tipo === 'entrada') res = await registrarEntrada(localizacao);
         else res = await registrarSaida(localizacao);
-        if (res.success) toast.success(res.message);
-        else toast.error(res.message);
+        if (res.success) showLocalAlert('success', res.message);
+        else showLocalAlert('error', res.message);
       } catch (err) {
-        toast.error('Erro ao registrar ponto');
+        showLocalAlert('error', 'Erro ao registrar ponto');
       }
     };
 
@@ -335,10 +357,10 @@ export function Ponto() {
         let res;
         if (tipo === 'inicio') res = await registrarInicioIntervalo(localizacao);
         else res = await registrarFimIntervalo(localizacao);
-        if (res.success) toast.success(res.message);
-        else toast.error(res.message);
+        if (res.success) showLocalAlert('success', res.message);
+        else showLocalAlert('error', res.message);
       } catch (err) {
-        toast.error('Erro ao registrar intervalo');
+        showLocalAlert('error', 'Erro ao registrar intervalo');
       }
     };
 
@@ -348,7 +370,7 @@ export function Ponto() {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
           const accuracy = pos.coords.accuracy;
-          try {
+            try {
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1&zoom=18`,
               { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'CFO-Hub/1.0', 'Referer': window.location.origin } }
@@ -509,9 +531,38 @@ export function Ponto() {
   return (
     <>
       <div className="space-y-6">
-        <Card className="p-4 flex items-center justify-between">
-          <h3 className="text-2xl font-bold">Controle de Ponto</h3>
-        </Card>
+        <PageBanner
+          title="Controle de Ponto"
+          style={{ minHeight: '64px' }}
+          right={(
+            <>
+              {(() => {
+                const now = new Date();
+                const nowKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const nowLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                const options = mesesDisponiveis.length > 0 ? mesesDisponiveis.map((m) => ({ value: m.key, label: m.label })) : [{ value: nowKey, label: nowLabel }];
+                return (
+                  <FilterPill
+                    icon={<Filter size={16} />}
+                    value={mes}
+                    onChange={(e) => setMes(e.target.value)}
+                    options={options as any}
+                    aria-label="Selecionar mês"
+                  />
+                );
+              })()}
+              <Button
+                variant="secondary"
+                onClick={exportCSV}
+                className="flex items-center gap-2"
+                title="Exportar registros para CSV"
+              >
+                <Download size={16} />
+                Exportar CSV
+              </Button>
+            </>
+          )}
+        />
         <div className="flex flex-col gap-6 md:flex-row md:gap-6">
           <Card className="md:w-[30%] w-full p-8 bg-white flex flex-col md:h-[420px]">
             <div className="flex flex-col gap-6 h-full">
@@ -524,9 +575,26 @@ export function Ponto() {
                   <p className="text-xl font-bold text-[#1F2937] font-mono mb-0">{`${['dom','seg','ter','qua','qui','sex','sáb'][new Date().getDay()]}, ${new Date().toLocaleDateString('pt-BR')}`}</p>
                   <p className="text-5xl font-bold text-[#1F2937] font-mono">{time || '00:00:00'}</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-lg">
-                  <AlertCircle size={18} className="text-green-700" />
-                  <p className="text-sm text-green-700 font-medium">{statusHoje}</p>
+                <div className="mt-2">
+                  {/* Single main Badge used for both status and transient alerts */}
+                  <Badge variant={localAlert ? (localAlert.type === 'error' ? 'rejeitada' : localAlert.type === 'success' ? 'positivo' : 'avaliacao') : 'ferias'}>
+                    <span className="flex items-center gap-2">
+                      {localAlert ? (
+                        localAlert.type === 'error' ? (
+                          <XCircle size={16} className="text-red-600" />
+                        ) : localAlert.type === 'success' ? (
+                          <CheckCircle size={16} className="text-green-600" />
+                        ) : (
+                          <AlertCircle size={16} className="text-blue-600" />
+                        )
+                      ) : (
+                        <AlertCircle size={16} className="text-green-700" />
+                      )}
+                      <span className="text-sm">
+                        {localAlert ? localAlert.message : 'Registre sua entrada!'}
+                      </span>
+                    </span>
+                  </Badge>
                 </div>
                 <div className="w-full max-w-xs">
                   <div className="grid grid-cols-2 gap-3 mb-3">
@@ -724,38 +792,9 @@ export function Ponto() {
           </Card>
         </div>
 
-      <Card className="p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">Espelho de Ponto</h3>
-          <div className="flex items-center gap-3">
-            {(() => {
-              const now = new Date();
-              const nowKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-              const nowLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-              const options = mesesDisponiveis.length > 0 ? mesesDisponiveis.map((m) => ({ value: m.key, label: m.label })) : [{ value: nowKey, label: nowLabel }];
-              return (
-                <FilterPill
-                  icon={<Filter size={16} />}
-                  value={mes}
-                  onChange={(e) => setMes(e.target.value)}
-                  options={options as any}
-                  aria-label="Selecionar mês"
-                />
-              );
-            })()}
-            {/* Reset Dev moved to Header (dev only) */}
-            <Button
-              variant="secondary"
-              onClick={exportCSV}
-              className="flex items-center gap-2"
-              title="Exportar registros para CSV"
-            >
-              <Download size={16} />
-              Exportar CSV
-            </Button>
-          </div>
-        </div>
+      
 
+      <Card className="p-6">
         {registrosFiltrados.length === 0 ? (
           <EmptyState
             title="Nenhum registro este mês"

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Card } from '../components/ui/Card';
+import PageBanner from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Camera, Save, Eye, EyeOff } from 'lucide-react';
@@ -157,7 +158,7 @@ export function MeuPerfil() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
+        <PageBanner title="Meu Perfil" />
         <p className="text-gray-600 mt-1">Gerencie suas informações pessoais</p>
       </div>
 

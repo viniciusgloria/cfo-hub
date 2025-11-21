@@ -5,6 +5,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import PageBanner from '../components/ui/PageBanner';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Tabs } from '../components/ui/Tabs';
@@ -149,16 +150,18 @@ export function Solicitacoes() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <h3 className="text-2xl font-bold">Solicitações</h3>
-        <Button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus size={18} />
-          Nova Solicitação
-        </Button>
-      </Card>
+      <PageBanner
+        title="Solicitações"
+        right={(
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Nova Solicitação
+          </Button>
+        )}
+      />
 
         {selectedIds.length > 0 && (
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded">

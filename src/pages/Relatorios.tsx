@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { FileText, Download, Clock, Users, Target, Filter } from 'lucide-react';
 import { Card } from '../components/ui/Card';
+import PageBanner from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { usePontoStore } from '../store/pontoStore';
@@ -149,9 +150,7 @@ export function Relatorios() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <h3 className="text-2xl font-bold">Relatórios</h3>
-      </Card>
+      <PageBanner title="Relatórios" />
 
       {/* Seleção de tipo de relatório */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

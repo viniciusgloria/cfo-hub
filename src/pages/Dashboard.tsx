@@ -4,6 +4,7 @@ import { Clock, FileText, Calendar, Settings, Plus, MessageSquare, Users, Target
 import { useNavigate } from 'react-router-dom';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card } from '../components/ui/Card';
+import { PageBanner } from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
 import { usePontoStore } from '../store/pontoStore';
 import { DashboardCustomizer } from '../components/DashboardCustomizer';
@@ -155,21 +156,22 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-2xl font-bold">Dashboard</h3>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={startTour} variant="outline" className="flex items-center gap-2">
-            <HelpCircle size={16} />
-            Tour Guiado
-          </Button>
-          <Button onClick={() => setConfigOpen(true)} variant="outline" className="flex items-center gap-2">
-            <Settings size={16} />
-            Personalizar
-          </Button>
-        </div>
-      </Card>
+      <PageBanner
+        title="Dashboard"
+        style={{ minHeight: '64px' }}
+        right={(
+          <>
+            <Button onClick={startTour} variant="outline" className="flex items-center gap-2">
+              <HelpCircle size={16} />
+              Tour Guiado
+            </Button>
+            <Button onClick={() => setConfigOpen(true)} variant="outline" className="flex items-center gap-2">
+              <Settings size={16} />
+              Personalizar
+            </Button>
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 max-w-7xl">
         {cardWidgets.map((widget) => {
