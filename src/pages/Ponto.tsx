@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight, Filter, XCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight, Filter, XCircle, CheckCircle, Clock } from 'lucide-react';
 import FilterPill from '../components/ui/FilterPill';
 import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -533,6 +533,7 @@ export function Ponto() {
       <div className="space-y-6">
         <PageBanner
           title="Controle de Ponto"
+          icon={<Clock size={32} />}
           style={{ minHeight: '64px' }}
           right={(
             <>

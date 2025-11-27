@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Settings } from 'lucide-react';
 // Card removed: no longer needed after maintenance UI removal
 import PageBanner from '../components/ui/PageBanner';
 import { Tabs } from '../components/ui/Tabs';
@@ -198,7 +199,7 @@ export function Configuracoes() {
 
   return (
     <div className="space-y-6">
-      <PageBanner title="Configurações" />
+      <PageBanner title="Configurações" icon={<Settings size={32} />} />
       <Tabs
           tabs={[
             { id: 'empresa', label: 'Empresa' },

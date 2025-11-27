@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Filter } from 'lucide-react';
+import { Plus, Edit2, Trash2, Filter, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -204,6 +204,7 @@ export function OKRs() {
     <div className="space-y-6">
       <PageBanner
         title="Acompanhar Desenvolvimento"
+        icon={<Target size={32} />}
         right={(
           <>
             <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-md">

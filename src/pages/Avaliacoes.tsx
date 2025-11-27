@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Star, CheckCircle, Clock, AlertCircle, TrendingUp } from 'lucide-react';
+import { Star, CheckCircle, Clock, AlertCircle, TrendingUp, Award } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
@@ -135,7 +135,7 @@ export function Avaliacoes() {
 
   return (
     <div className="space-y-6">
-      <PageBanner title="Avaliações de Desempenho" />
+      <PageBanner title="Avaliações de Desempenho" icon={<Award size={32} />} />
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

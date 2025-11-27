@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
@@ -152,6 +152,7 @@ export function Solicitacoes() {
     <div className="space-y-6">
       <PageBanner
         title="Solicitações"
+        icon={<FileText size={32} />}
         right={(
           <Button
             onClick={() => setIsModalOpen(true)}

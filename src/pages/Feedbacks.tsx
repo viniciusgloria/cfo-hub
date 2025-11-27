@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { Lock } from 'lucide-react';
+import { Lock, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -93,7 +93,7 @@ export function Feedbacks() {
 
   return (
     <div className="space-y-6">
-      <PageBanner title="Feedbacks" />
+      <PageBanner title="Feedbacks" icon={<MessageCircle size={32} />} />
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'recebidos' && (

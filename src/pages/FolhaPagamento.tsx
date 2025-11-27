@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { PageBanner } from '../components/ui/PageBanner';
 import { EditarFolhaModal } from '../components/EditarFolhaModal.tsx';
 import { NovaFolhaModal } from '../components/NovaFolhaModal';
 import { ImportPreviewModal } from '../components/ImportPreviewModal';
@@ -564,14 +565,11 @@ export default function FolhaPagamentoPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <FileText className="w-8 h-8 text-emerald-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Folha de Pagamento</h1>
-          <p className="text-gray-600 dark:text-gray-400">Gerencie os pagamentos dos colaboradores</p>
-        </div>
-      </div>
+      <PageBanner
+        title="Folha de Pagamento"
+        icon={<DollarSign size={32} />}
+        style={{ minHeight: '64px' }}
+      />
 
       {/* Filtros e Ações */}
       <div className="flex flex-col gap-4">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { FileText, Download, Clock, Users, Target, Filter } from 'lucide-react';
+import { FileText, Download, Clock, Users, Target, Filter, BarChart } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
@@ -150,7 +150,7 @@ export function Relatorios() {
 
   return (
     <div className="space-y-6">
-      <PageBanner title="Relatórios" />
+      <PageBanner title="Relatórios" icon={<BarChart size={32} />} />
 
       {/* Seleção de tipo de relatório */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit } from 'lucide-react';
+import { Plus, Edit, UserCog } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Input } from '../components/ui/Input';
@@ -75,6 +75,7 @@ export function Colaboradores() {
     <div className="space-y-6">
       <PageBanner
         title="Colaboradores"
+        icon={<UserCog size={32} />}
         right={(
           <>
             <span className="flex items-center gap-2">

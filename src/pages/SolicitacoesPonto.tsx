@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { Clock, CheckCircle, XCircle, Paperclip, ImageIcon, X } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Paperclip, ImageIcon, X, ClipboardCheck } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Badge } from '../components/ui/Badge';
@@ -143,6 +143,7 @@ export function SolicitacoesPonto() {
     <div className="space-y-6">
       <PageBanner
         title="Aprovações de Ponto"
+        icon={<ClipboardCheck size={32} />}
         right={isAprovador && selectedIds.length > 0 ? (
           <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg dark:bg-transparent">
             <span className="text-sm text-gray-700 dark:text-white">{selectedIds.length} selecionada(s)</span>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { Search, RefreshCw, Filter } from 'lucide-react';
+import { Search, RefreshCw, Filter, Users } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { PageBanner } from '../components/ui/PageBanner';
@@ -97,6 +97,7 @@ export function Clientes() {
     <div className="space-y-6">
       <PageBanner
         title="Clientes"
+        icon={<Users size={32} />}
         style={{ minHeight: '64px' }}
         right={(
           <>

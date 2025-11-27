@@ -3,7 +3,7 @@ import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Camera, Save, Eye, EyeOff } from 'lucide-react';
+import { Camera, Save, Eye, EyeOff, UserCog } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { toast } from 'react-hot-toast';
 import { SiDiscord } from 'react-icons/si';
@@ -158,7 +158,7 @@ export function MeuPerfil() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <PageBanner title="Meu Perfil" />
+        <PageBanner title="Meu Perfil" icon={<UserCog size={32} />} />
         <p className="text-gray-600 mt-1">Gerencie suas informações pessoais</p>
       </div>
 

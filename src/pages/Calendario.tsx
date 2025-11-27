@@ -160,6 +160,7 @@ export function Calendario() {
     <div className="space-y-6">
       <PageBanner
         title="Calendário"
+        icon={<CalendarIcon size={32} />}
         style={{ minHeight: '64px' }}
         right={(
           <>

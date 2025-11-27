@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, Search, MoreVertical } from 'lucide-react';
+import { MessageCircle, Send, Search, MoreVertical, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -87,6 +87,7 @@ export function Chat() {
     <div className="h-[calc(100vh-8rem)] space-y-6">
       <PageBanner
         title="Chat"
+        icon={<MessageSquare size={32} />}
         style={{ minHeight: '64px' }}
       />
 

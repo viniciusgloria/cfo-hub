@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, FileText, Calendar, Settings, Plus, MessageSquare, Users, Target, MessageCircle, TrendingUp, Briefcase, UsersRound, Edit3, BarChart, HelpCircle, FileBarChart2 } from 'lucide-react';
+import { Clock, FileText, Calendar, Settings, Plus, MessageSquare, Users, Target, MessageCircle, TrendingUp, Briefcase, UsersRound, Edit3, BarChart, HelpCircle, FileBarChart2, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card } from '../components/ui/Card';
@@ -158,6 +158,7 @@ export function Dashboard() {
     <div className="space-y-6">
       <PageBanner
         title="Dashboard"
+        icon={<Home size={32} />}
         style={{ minHeight: '64px' }}
         right={(
           <>
