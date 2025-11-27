@@ -11,17 +11,18 @@ import {
   LogOut,
   X,
   ClipboardCheck,
-  Upload,
+  
   BarChart,
   Calendar,
-  Award
+  Award,
+  DollarSign
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useEmpresaStore } from '../../store/empresaStore';
 import { NavItem } from '../../types';
-import { useEffect, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
+import { useEffect, useRef } from 'react';
+
 
 // Menu principal na ordem solicitada
 const navItems: NavItem[] = [
@@ -42,6 +43,7 @@ const navItemsGestor: NavItem[] = [
   { label: 'Aprovações Ponto', path: '/solicitacoes-ponto', icon: ClipboardCheck },
   { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
   { label: 'Desenvolvimento', path: '/okrs', icon: Target },
+  { label: 'Folha de Pagamento', path: '/folha-pagamento', icon: DollarSign },
   { label: 'Relatórios', path: '/relatorios', icon: BarChart },
 ];
 
@@ -49,74 +51,19 @@ interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   collapsed?: boolean; // desktop collapsed (icons only)
-  onToggleCollapse?: () => void;
 }
 
-export function Sidebar({ isOpen = true, onClose, collapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ isOpen = true, onClose, collapsed = false }: SidebarProps) {
   const { logout, user } = useAuthStore();
-  const { logo, nomeEmpresa, setLogo } = useEmpresaStore();
+  const { logo, miniLogo, nomeEmpresa } = useEmpresaStore();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
+  
   
   const isGestor = user?.role === 'admin' || user?.role === 'gestor' || user?.role === 'rh';
   const isAdmin = user?.role === 'admin';
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validar tipo de arquivo
-    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-      toast.error('Apenas arquivos JPG e PNG são permitidos');
-      return;
-    }
-
-    // Validar tamanho (máx 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('O arquivo deve ter no máximo 2MB');
-      return;
-    }
-
-    setUploadingLogo(true);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Criar canvas para redimensionar
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Definir tamanho máximo (largura 200px, altura proporcional)
-        const maxWidth = 200;
-        const maxHeight = 60;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = (maxWidth / width) * height;
-          width = maxWidth;
-        }
-        if (height > maxHeight) {
-          width = (maxHeight / height) * width;
-          height = maxHeight;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        const resizedDataUrl = canvas.toDataURL(file.type);
-        setLogo(resizedDataUrl);
-        setUploadingLogo(false);
-        toast.success('Logo atualizado com sucesso!');
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
+  
 
   useEffect(() => {
     if (!isOpen) return;
@@ -195,33 +142,19 @@ export function Sidebar({ isOpen = true, onClose, collapsed = false, onToggleCol
       >
         <div className="flex flex-col h-full overflow-y-auto no-scrollbar">
           <div className={`p-4 flex items-center ${collapsed ? 'justify-center' : 'justify-between'} transition-all`}>
-            <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3 flex-1'} w-full`}>
-              {logo ? (
-                <img
-                  src={logo}
-                  alt={nomeEmpresa}
-                  className={`${collapsed ? 'h-8 w-8 object-contain rounded' : 'max-h-12 max-w-[160px] object-contain'} transition-all`}
-                />
+            <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3 flex-1 justify-center'} w-full`}>
+              {logo || miniLogo ? (
+                <div className="flex items-center justify-center w-full">
+                  <img
+                    src={collapsed ? (miniLogo || logo) : (logo || miniLogo)}
+                    alt={nomeEmpresa}
+                    className={`${collapsed ? 'h-8 w-8 object-contain rounded' : 'h-[55px] w-[246px] object-contain'} transition-all mx-auto`}
+                  />
+                </div>
               ) : (
-                !collapsed && <h1 className="text-gray-800 dark:text-white text-xl font-bold">{nomeEmpresa}</h1>
+                !collapsed && <h1 className="text-gray-800 dark:text-white text-xl font-bold text-center w-full">{nomeEmpresa}</h1>
               )}
-              {!collapsed && isAdmin && (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors p-1 rounded"
-                  title="Alterar logo"
-                  disabled={uploadingLogo}
-                >
-                  <Upload size={16} />
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/jpg,image/png"
-                onChange={handleLogoUpload}
-                className="hidden"
-              />
+              {/* Editing the company logo was moved to Configurações (Empresa) for admin users. */}
             </div>
             {/* Mobile close */}
             <button
@@ -231,37 +164,7 @@ export function Sidebar({ isOpen = true, onClose, collapsed = false, onToggleCol
             >
               <X size={24} />
             </button>
-            {/* Desktop collapse toggle */}
-            <button
-              onClick={onToggleCollapse}
-              className="hidden md:inline-flex ml-2 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-              title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-            >
-              <svg 
-                width="20" 
-                height="20" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {collapsed ? (
-                  // Ícone expandir (setas para direita)
-                  <>
-                    <polyline points="13 17 18 12 13 7" />
-                    <polyline points="6 17 11 12 6 7" />
-                  </>
-                ) : (
-                  // Ícone colapsar (setas para esquerda)
-                  <>
-                    <polyline points="11 17 6 12 11 7" />
-                    <polyline points="18 17 13 12 18 7" />
-                  </>
-                )}
-              </svg>
-            </button>
+            {/* Collapse control moved to Header (menu button) */}
           </div>
 
           <nav className={`flex-1 px-3 ${collapsed ? 'space-y-1' : 'p-4 space-y-2'} transition-all`} data-tour="menu">

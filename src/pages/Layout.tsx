@@ -27,13 +27,25 @@ export function Layout() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(prev => !prev)}
       />
 
       <div className={`flex flex-col flex-1 h-full overflow-hidden transition-all duration-300`}>        
         <Header
           title={pageTitle}
-          onMenuClick={() => setSidebarOpen(o => !o)}
+          onMenuClick={() => {
+            // on small screens toggle the overlay drawer, on desktop toggle collapsed state
+            try {
+              const isDesktop = window.matchMedia && window.matchMedia('(min-width: 768px)').matches;
+              if (isDesktop) {
+                setSidebarCollapsed((prev) => !prev);
+              } else {
+                setSidebarOpen((o) => !o);
+              }
+            } catch (e) {
+              // fallback: toggle overlay
+              setSidebarOpen((o) => !o);
+            }
+          }}
         />
 
         <main className="flex-1 overflow-y-auto">

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { ColaboradorCompleto } from '../types';
 
 export interface Colaborador {
   id: number;
@@ -11,6 +12,32 @@ export interface Colaborador {
   avatar?: string;
   status: 'ativo' | 'afastado' | 'ferias';
   metaHorasMensais?: number; // Meta de horas por mês (padrão 176h)
+  
+  // Campos extras para integração com folha de pagamento
+  nomeCompleto?: string;
+  cpf?: string;
+  rg?: string;
+  dataNascimento?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  cep?: string;
+  setor?: string;
+  funcao?: string;
+  empresa?: string;
+  regime?: 'CLT' | 'PJ';
+  contrato?: 'CLT' | 'PJ';
+  chavePix?: string;
+  banco?: string;
+  codigoBanco?: string;
+  agencia?: string;
+  conta?: string;
+  operacao?: string;
+  cnpj?: string;
+  razaoSocial?: string;
+  obs?: string;
 }
 
 interface ColaboradoresState {

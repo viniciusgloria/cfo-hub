@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 // Card removed: no longer needed after maintenance UI removal
 import PageBanner from '../components/ui/PageBanner';
 import { Tabs } from '../components/ui/Tabs';
@@ -10,6 +10,8 @@ import { Modal } from '../components/ui/Modal';
 import { FormError } from '../components/ui/FormError';
 import { isValidCNPJ, maxLength } from '../utils/validation';
 import toast from 'react-hot-toast';
+import { useEmpresaStore } from '../store/empresaStore';
+import { useAuthStore } from '../store/authStore';
 
 export function Configuracoes() {
   const [active, setActive] = useState('empresa');
@@ -79,6 +81,117 @@ export function Configuracoes() {
 
   const [empresaErrors, setEmpresaErrors] = useState<string[]>([]);
 
+  const { logo, miniLogo, setLogo, setMiniLogo } = useEmpresaStore();
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+  const fileInputRefExpanded = useRef<HTMLInputElement | null>(null);
+  const fileInputRefMini = useRef<HTMLInputElement | null>(null);
+  const [uploadingExpanded, setUploadingExpanded] = useState(false);
+  const [uploadingMini, setUploadingMini] = useState(false);
+
+  const handleExpandedUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      toast.error('Apenas arquivos JPG e PNG são permitidos');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 2MB');
+      return;
+    }
+
+    setUploadingExpanded(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Max display size for sidebar expanded is 246x55px
+        const maxWidth = 246;
+        const maxHeight = 55;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height;
+          width = maxWidth;
+        }
+        if (height > maxHeight) {
+          width = (maxHeight / height) * width;
+          height = maxHeight;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const resizedDataUrl = canvas.toDataURL(file.type);
+        setLogo(resizedDataUrl);
+        setUploadingExpanded(false);
+        toast.success('Logo Sidebar atualizado com sucesso!');
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleMiniUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      toast.error('Apenas arquivos JPG e PNG são permitidos');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 2MB');
+      return;
+    }
+
+    setUploadingMini(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Max display size for sidebar collapsed is 32x32px
+        const maxSize = 32;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxSize) {
+          height = (maxSize / width) * height;
+          width = maxSize;
+        }
+        if (height > maxSize) {
+          width = (maxSize / height) * width;
+          height = maxSize;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const resizedDataUrl = canvas.toDataURL(file.type);
+        setMiniLogo(resizedDataUrl);
+        setUploadingMini(false);
+        toast.success('Mini Logo Sidebar atualizado com sucesso!');
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   // validation / touched states for inline errors
   const [touchedEmpresa, setTouchedEmpresa] = useState({ nome: false, cnpj: false, cidade: false });
   const [touchedJornada, setTouchedJornada] = useState({ inicio: false, fim: false });
@@ -98,8 +211,58 @@ export function Configuracoes() {
           onTabChange={setActive}
         >
           {active === 'empresa' && (
-            <div className="space-y-4 max-w-lg mt-4">
+            <div className="space-y-4 max-w-2xl mt-4">
               <FormError errors={empresaErrors} />
+              <div className="flex flex-row gap-8 items-start">
+                {/* Logo expandida */}
+                <div className="flex flex-col items-center w-[260px]">
+                  <div className="text-xs text-gray-600 mb-1">Logo Sidebar</div>
+                  <div className="h-[55px] w-[246px] bg-white border border-gray-200 flex items-center justify-center p-2 mb-2 rounded">
+                    {logo ? (
+                      <img src={logo} alt="preview-expanded" className="h-[55px] w-[246px] object-contain" />
+                    ) : (
+                      <div className="text-xs text-gray-400">Sem logo</div>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRefExpanded.current?.click()}
+                      className="text-xs px-2 py-1 bg-gray-100 rounded border"
+                      disabled={uploadingExpanded}
+                    >
+                      {uploadingExpanded ? 'Enviando...' : 'Upload'}
+                    </button>
+                  )}
+                  <div className="text-[11px] text-gray-500 mt-2 text-center">Exibição: 246×55 px<br/>PNG/JPG até 2MB</div>
+                  <input ref={fileInputRefExpanded} type="file" accept="image/jpeg,image/jpg,image/png" onChange={handleExpandedUpload} className="hidden" />
+                </div>
+
+                {/* Mini logo */}
+                <div className="flex flex-col items-center w-[120px]">
+                  <div className="text-xs text-gray-600 mb-1">Mini Logo Sidebar</div>
+                  <div className="h-10 w-10 bg-white border border-gray-200 flex items-center justify-center mb-2 rounded">
+                    {miniLogo ? (
+                      <img src={miniLogo} alt="preview-collapsed" className="h-10 w-10 object-contain rounded" />
+                    ) : (
+                      <div className="text-xs text-gray-400">—</div>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRefMini.current?.click()}
+                      className="text-xs px-2 py-1 bg-gray-100 rounded border"
+                      disabled={uploadingMini}
+                    >
+                      {uploadingMini ? 'Enviando...' : 'Upload'}
+                    </button>
+                  )}
+                  <div className="text-[11px] text-gray-500 mt-2 text-center">Exibição: 40×40 px<br/>PNG/JPG até 2MB</div>
+                  <input ref={fileInputRefMini} type="file" accept="image/jpeg,image/jpg,image/png" onChange={handleMiniUpload} className="hidden" />
+                </div>
+              </div>
+              
               <label className="block text-sm text-gray-600">Nome da empresa</label>
               <Input maxLength={100} aria-label="Nome da empresa" value={empresa.nome} onBlur={() => setTouchedEmpresa({ ...touchedEmpresa, nome: true })} onChange={(e) => setEmpresa({ ...empresa, nome: e.target.value })} aria-invalid={!empresa.nome && touchedEmpresa.nome} />
               {!empresa.nome && touchedEmpresa.nome && <p className="text-xs text-red-500">O nome da empresa é obrigatório.</p>}
@@ -192,55 +355,8 @@ export function Configuracoes() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
 
-
-        
-
-          {active === 'permissoes' && (
-            <div className="mt-4 space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-blue-900 mb-2">Níveis de Acesso</h4>
-                <p className="text-sm text-blue-700 mb-3">Configure as permissões por tipo de usuário no sistema.</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h5 className="font-semibold text-gray-800">Administrador</h5>
-                      <p className="text-xs text-gray-600">Acesso total ao sistema, incluindo configurações</p>
-                    </div>
-                    <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">Total</span>
-                  </div>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>✓ Gerenciar usuários e permissões</li>
-                    <li>✓ Aprovar/rejeitar solicitações</li>
-                    <li>✓ Configurar empresa e jornada</li>
-                    <li>✓ Editar meta de horas dos colaboradores</li>
-                    <li>✓ Acessar relatórios completos</li>
-                  </ul>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h5 className="font-semibold text-gray-800">Gestor / RH</h5>
-                      <p className="text-xs text-gray-600">Gerenciamento de equipe e aprovações</p>
-                    </div>
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">Avançado</span>
-                  </div>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>✓ Aprovar/rejeitar solicitações da equipe</li>
-                    <li>✓ Visualizar ponto e banco de horas</li>
-                    <li>✓ Editar meta de horas dos colaboradores</li>
-                    <li>✓ Cadastrar novos colaboradores</li>
-                    <li>✗ Configurações de sistema</li>
-                  </ul>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4">
+              <div className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <h5 className="font-semibold text-gray-800">Colaborador</h5>
@@ -274,15 +390,13 @@ export function Configuracoes() {
                     <li>✗ Postar no mural</li>
                   </ul>
                 </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Nota:</strong> As permissões são aplicadas automaticamente com base no role do usuário.
+                    Para alterar o nível de acesso, edite o campo "role" na aba Usuários.
+                  </p>
+                </div>
               </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Nota:</strong> As permissões são aplicadas automaticamente com base no role do usuário.
-                  Para alterar o nível de acesso, edite o campo "role" na aba Usuários.
-                </p>
-              </div>
-            </div>
           )}
 
           {active === 'integracoes' && (
