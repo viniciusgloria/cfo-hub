@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
-import { X, Save, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Save, Calendar as CalendarIcon, Trash } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import toast from 'react-hot-toast';
 import { FolhaPagamento } from '../types';
 
 interface EditarFolhaModalProps {
   folha: FolhaPagamento | null;
   onClose: () => void;
   onSave: (id: string, dados: Partial<FolhaPagamento>) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function EditarFolhaModal({ folha, onClose, onSave }: EditarFolhaModalProps) {
+export function EditarFolhaModal({ folha, onClose, onSave, onDelete }: EditarFolhaModalProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
     valor: 0,
     adicional: 0,
@@ -426,7 +429,41 @@ export function EditarFolhaModal({ folha, onClose, onSave }: EditarFolhaModalPro
         )}
 
         {/* Botões */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 items-center">
+          {typeof onDelete === 'function' && folha && (
+            <div>
+              {!showDeleteConfirm ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash className="w-4 h-4" />
+                  Excluir
+                </button>
+              ) : (
+                <div className="inline-flex items-center gap-2 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded">
+                  <span className="text-sm text-red-800 dark:text-red-200">Você deseja remover esta folha permanentemente?</span>
+                  <button
+                    type="button"
+                    className="px-3 py-1 bg-red-600 text-white rounded"
+                    onClick={() => {
+                      if (!folha) return;
+                      try { onDelete(folha.id); toast.success('Folha removida'); } catch {}
+                      setShowDeleteConfirm(false);
+                      onClose();
+                    }}
+                  >Confirmar</button>
+                  <button
+                    type="button"
+                    className="px-2 py-1 bg-white border rounded"
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >Cancelar</button>
+                </div>
+              )}
+            </div>
+          )}
+
           <Button type="submit" variant="primary">
             <Save className="w-4 h-4 mr-2 inline" />
             Salvar

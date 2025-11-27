@@ -11,22 +11,40 @@ import { Badge } from '../components/ui/Badge';
 import { EditarFolhaModal } from '../components/EditarFolhaModal.tsx';
 import { NovaFolhaModal } from '../components/NovaFolhaModal';
 import { ImportPreviewModal } from '../components/ImportPreviewModal';
+import useImportMappingsStore from '../store/importMappingsStore';
+import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import { headersSimilarity } from '../utils/importMappings';
 import { FolhaPagamento } from '../types';
 
 export default function FolhaPagamentoPage() {
     // Estado para menu de exportação
     const [showExportMenu, setShowExportMenu] = useState(false);
+    // Estado para menu de download de modelo
+    const [showModeloMenu, setShowModeloMenu] = useState(false);
 
     // Fechar menu de exportação ao clicar fora
     useEffect(() => {
       if (!showExportMenu) return;
       function handleClick(e: MouseEvent) {
         const target = e.target as HTMLElement;
-        if (!target.closest('.relative')) setShowExportMenu(false);
+        if (!target.closest('.export-menu-container')) setShowExportMenu(false);
       }
       document.addEventListener('mousedown', handleClick);
       return () => document.removeEventListener('mousedown', handleClick);
     }, [showExportMenu]);
+
+    // Fechar menu de modelo ao clicar fora
+    useEffect(() => {
+      if (!showModeloMenu) return;
+      function handleClick(e: MouseEvent) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.modelo-menu-container')) setShowModeloMenu(false);
+      }
+      document.addEventListener('mousedown', handleClick);
+      return () => document.removeEventListener('mousedown', handleClick);
+    }, [showModeloMenu]);
 
     // Guardar referência original
     const exportarParaExcelOriginal = useFolhaPagamentoStore.getState().exportarParaExcel;
@@ -51,6 +69,7 @@ export default function FolhaPagamentoPage() {
     importarDePlanilha,
     gerarPlanilhaModelo,
   } = useFolhaPagamentoStore();
+  const removerFolha = useFolhaPagamentoStore((s) => s.removerFolha);
 
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
@@ -64,8 +83,12 @@ export default function FolhaPagamentoPage() {
   const [modalPersonalizar, setModalPersonalizar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewInvalid, setPreviewInvalid] = useState(false);
   const [previewRows, setPreviewRows] = useState<any[]>([]);
   const [previewPeriodo, setPreviewPeriodo] = useState<string | null>(null);
+  const [previewOriginalRows, setPreviewOriginalRows] = useState<any[] | null>(null);
+  const [appliedMappingName, setAppliedMappingName] = useState<string | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const { colaboradores } = useColaboradoresStore();
   const folhasFiltradas = getFolhasFiltradas();
@@ -118,155 +141,362 @@ export default function FolhaPagamentoPage() {
 
 
 
-  const handleBaixarModelo = () => {
+  const handleBaixarModeloCSV = () => {
     const csv = gerarPlanilhaModelo();
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/tab-separated-values;charset=utf-8;' });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', 'modelo-folha-pagamento.tsv');
+    link.setAttribute('download', 'modelo-folha-pagamento.csv');
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setShowModeloMenu(false);
+  };
+
+  const handleBaixarModeloXLS = () => {
+    // Generate a real .xlsx file using SheetJS (xlsx) and file-saver
+    try {
+      const headers = [
+        'CPF', 'COLABORADOR', 'FUNÇÃO', 'EMPRESA', 'CTT', 'VALOR',
+        'ADICIONAL', 'REEMBOLSO', 'DESCONTO', 'VALOR TOTAL', 'SITUAÇÃO',
+        'DATA PGTO', 'NOTA FISCAL', 'STATUS', 'PAGAMENTO', 'DATA', 'OBS',
+        'V. TOTAL/ S REEMB', 'EMPRESA 1 NOME', 'EMPRESA 1 %', 'EMPRESA 1 VALOR',
+        'EMPRESA 2 NOME', 'EMPRESA 2 %', 'EMPRESA 2 VALOR', 'EMPRESA 3 NOME',
+        'EMPRESA 3 %', 'EMPRESA 3 VALOR', 'EMPRESA 4 NOME', 'EMPRESA 4 %',
+        'EMPRESA 4 VALOR', '%TOTAL OPERS'
+      ];
+      const exemplo = [
+        '12345678900', 'João da Silva', 'Analista', 'CFO Consultoria', 'CLT',
+        '5000.00', '500.00', '200.00', '800.00', '4900.00', 'Pendente',
+        '2025-11-30', '', '', '', '', '', '4700.00', 'Empresa A', '25',
+        '1175.00', 'Empresa B', '25', '1175.00', 'Empresa C', '25',
+        '1175.00', 'Empresa D', '25', '1175.00', '100'
+      ];
+
+      const aoa = [headers, exemplo];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'modelo-folha-pagamento');
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, 'modelo-folha-pagamento.xlsx');
+    } catch (err) {
+      console.error('Erro ao gerar XLSX', err);
+      toast.error('Não foi possível gerar o arquivo .xlsx. Abra o CSV em seu editor.');
+    }
+    setShowModeloMenu(false);
   };
 
   const handleImportar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      if (lines.length < 2) {
-        alert('Arquivo vazio ou inválido');
-        return;
-      }
-
-      // Validar cabeçalhos do modelo padrão (inclui nomes/percent/valor por empresa)
-      const expectedHeaders = [
-        'colaborador', 'função', 'empresa', 'ctt', 'valor', 'adicional',
-        'reembolso', 'desconto', 'valor total', 'situação', 'data pgto',
-        'nota fiscal', 'status', 'pagamento', 'data', 'obs',
-        'v. total/ s reemb',
-        'empresa 1 nome', 'empresa 1 %', 'empresa 1 valor',
-        'empresa 2 nome', 'empresa 2 %', 'empresa 2 valor',
-        'empresa 3 nome', 'empresa 3 %', 'empresa 3 valor',
-        'empresa 4 nome', 'empresa 4 %', 'empresa 4 valor',
-        '%total opers'
-      ];
-      
-      const headers = lines[0].split('\t').map(h => h.replace(/"/g, '').trim().toLowerCase());
-      const isValidFormat = expectedHeaders.every((h, i) => headers[i] === h);
-
-      if (!isValidFormat) {
-        alert('Formato de arquivo inválido! Use o modelo padrão do sistema (Baixar Modelo).');
+    const name = (file.name || '').toLowerCase();
+    if (name.endsWith('.xls') || name.endsWith('.xlsx')) {
+      const fr = new FileReader();
+      fr.onload = (ev) => {
+        try {
+          const data = ev.target?.result as ArrayBuffer;
+          const wb = XLSX.read(data, { type: 'array' });
+          const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+          processImportedAOA(aoa as any);
+        } catch (err) {
+          console.error('Erro ao ler XLSX', err);
+          toast.error('Não foi possível ler o arquivo Excel. Tente usar CSV.');
+        }
         if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
-      }
+      };
+      fr.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        processImportedText(text);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      reader.readAsText(file);
+    }
+  };
 
-      // Processar dados
-      const dados = lines.slice(1).map(line => {
-        const values = line.split('\t').map(v => v.replace(/"/g, '').trim());
-        return {
-          colaborador: values[0] || '',
-          funcao: values[1] || '',
-          empresa: values[2] || '',
-          contrato: values[3] || '',
-          valor: values[4] || '0',
-          adicional: values[5] || '0',
-          reembolso: values[6] || '0',
-          desconto: values[7] || '0',
-          valorTotal: values[8] || '0',
-          situacao: values[9] || 'pendente',
-          dataPagamento: values[10] || '',
-          notaFiscal: values[11] || '',
-          statusNF: values[12] || '',
-          pagamentoNF: values[13] || '',
-          dataNF: values[14] || '',
-          obsNF: values[15] || '',
-          valorTotalSemReembolso: values[16] || '0',
-          empresa1Nome: values[17] || '',
-          empresa1Percent: values[18] || '0',
-          empresa1Valor: values[19] || '0',
-          empresa2Nome: values[20] || '',
-          empresa2Percent: values[21] || '0',
-          empresa2Valor: values[22] || '0',
-          empresa3Nome: values[23] || '',
-          empresa3Percent: values[24] || '0',
-          empresa3Valor: values[25] || '0',
-          empresa4Nome: values[26] || '',
-          empresa4Percent: values[27] || '0',
-          empresa4Valor: values[28] || '0',
-          percTotalOpers: values[29] || '0'
-        };
+  
+
+  // helper to normalize headers to our expected keys
+  const normalizeHeaderKey = (h = '') => {
+    const s = h.toString().toLowerCase().trim();
+    
+    // Exact matches first (more specific)
+    if (s === 'cpf') return 'cpf';
+    if (s === 'colaborador' || s === 'nome colaborador' || s === 'nome completo') return 'colaborador';
+    if (s === 'função' || s === 'funcao' || s === 'cargo') return 'funcao';
+    if (s === 'empresa') return 'empresa';
+    if (s === 'contrato' || s === 'ctt') return 'contrato';
+    if (s === 'adicional') return 'adicional';
+    if (s === 'reembolso' || s === 'reemb') return 'reembolso';
+    if (s === 'desconto') return 'desconto';
+    if (s === 'valor total' || s === 'total') return 'valorTotal';
+    if (s === 'valor') return 'valor';
+    if (s === 'nota fiscal' || s === 'nota') return 'notaFiscal';
+    
+    // Partial matches (avoid company-split columns like "EMPRESA 1 NOME", "EMPRESA 4 VALOR")
+    // Only match if it's a simple column name without numbers/splits
+    if (s.includes('cpf') && !s.match(/\d/)) return 'cpf';
+    if ((s.includes('colaborador') || (s.includes('nome') && !s.match(/empresa \d/))) && !s.match(/empresa \d/)) return 'colaborador';
+    if ((s.includes('função') || s.includes('funcao') || s.includes('cargo')) && !s.match(/\d/)) return 'funcao';
+    if (s.includes('empresa') && !s.match(/empresa \d/)) return 'empresa';
+    if ((s.includes('contrato') || s === 'ctt') && !s.match(/\d/)) return 'contrato';
+    if (s.includes('adicional') && !s.match(/\d/)) return 'adicional';
+    if (s.includes('reemb') && !s.includes('total') && !s.match(/\d/)) return 'reembolso';
+    if (s.includes('desconto') && !s.match(/\d/)) return 'desconto';
+    if ((s.includes('valor total') || s.includes('total')) && !s.includes('reemb') && !s.match(/empresa/)) return 'valorTotal';
+    if (s.includes('valor') && !s.includes('total') && !s.match(/empresa \d/)) return 'valor';
+    if (s.includes('nota')) return 'notaFiscal';
+    
+    // Return original if no match
+    return h.trim();
+  };
+
+  // process an Array-Of-Arrays (AOA) parsed from CSV/TSV or XLSX
+  const processImportedAOA = (aoa: any[][]) => {
+    // Get fresh list of colaboradores from store (in case new ones were added)
+    const colaboradoresAtualizados = useColaboradoresStore.getState().colaboradores;
+    console.log('🔍 INÍCIO DO PROCESSAMENTO - Colaboradores disponíveis:', colaboradoresAtualizados.length);
+    console.log('📋 Lista:', colaboradoresAtualizados.map(c => ({ id: c.id, nome: c.nomeCompleto || c.nome, cpf: c.cpf })));
+    
+    if (!aoa || aoa.length === 0) {
+      toast.error('Arquivo vazio ou inválido');
+      return;
+    }
+    const headersRaw = aoa[0].map((h: any) => String(h || '').trim());
+
+    // Validate that ALL required columns are present
+    const requiredKeys = ['cpf', 'colaborador', 'funcao', 'empresa', 'valor', 'contrato'];
+    const normalizedHeaders = headersRaw.map(h => normalizeHeaderKey(h));
+    const missingColumns = requiredKeys.filter(key => !normalizedHeaders.includes(key));
+
+    if (missingColumns.length > 0) {
+      // arquivo inválido — falta(m) coluna(s) obrigatória(s)
+      toast.error(`Arquivo inválido. Faltam as colunas: ${missingColumns.join(', ')}`);
+      setPreviewInvalid(true);
+      setPreviewRows([]);
+      setPreviewOpen(true);
+      return;
+    }
+
+    // Try to find saved mapping
+    const mappings = useImportMappingsStore.getState().mappings || [];
+    const best = mappings
+      .map(m => ({ m, score: headersSimilarity(headersRaw, m.headerSignature.split('|')) }))
+      .sort((a, b) => b.score - a.score)[0];
+
+    const willApplyMapping = best && best.score > 0.7;
+    const mappingToUse = willApplyMapping ? best.m.mapping : undefined;
+    const mappingNameApplied = willApplyMapping ? best.m.name : null;
+
+    // parse values rows
+    // build a mapping of normalized key -> original header text
+    const headerMap: Record<string, string> = {};
+    headersRaw.forEach(h => { headerMap[normalizeHeaderKey(h)] = h; });
+
+    // parse rows from aoa (skip header)
+    const rowsValues: any[][] = aoa.slice(1);
+    const dadosRaw = rowsValues.map((rowArr: any[]) => {
+      const obj: any = {};
+      headersRaw.forEach((h, i) => {
+        const key = normalizeHeaderKey(h);
+        obj[key] = (rowArr && typeof rowArr[i] !== 'undefined') ? String(rowArr[i]).trim() : '';
       });
+      obj.__originalHeaders = headerMap;
+      return obj;
+    });
 
-      // Validar se há dados
-      if (dados.length === 0 || !dados[0].colaborador) {
-        alert('Nenhum dado válido encontrado no arquivo.');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
+    // Ensure canonical keys exist and map correctly regardless of column order
+    const canonicalKeys = ['colaborador', 'cpf', 'empresa', 'funcao', 'valor', 'adicional', 'reembolso', 'desconto', 'valorTotal', 'contrato', 'notaFiscal'];
+    const dadosCanonical = dadosRaw.map((rowArrObj, rowIndex) => {
+      const canonical: any = {};
+      // find by scanning headersRaw to ensure correct column -> canonical mapping
+      headersRaw.forEach((h, i) => {
+        const norm = normalizeHeaderKey(h);
+        if (canonicalKeys.includes(norm)) {
+          canonical[norm] = (rowsValues[rowIndex] && typeof rowsValues[rowIndex][i] !== 'undefined') ? String(rowsValues[rowIndex][i]).trim() : '';
+        }
+      });
+      // fallback: if canonical missing, try existing keys on rowArrObj
+      canonicalKeys.forEach(k => {
+        if (typeof canonical[k] === 'undefined' || canonical[k] === '') {
+          if (typeof rowArrObj[k] !== 'undefined' && rowArrObj[k] !== '') canonical[k] = rowArrObj[k];
+        }
+      });
+      return { ...rowArrObj, ...canonical };
+    });
+
+    // create mapped version if mapping exists
+    const dados = mappingToUse ? dadosCanonical.map(row => {
+      const mapped: any = {};
+      // copy all values including __originalHeaders
+      Object.keys(row).forEach(k => { mapped[k] = row[k]; });
+
+      // ensure there is an __originalHeaders map to update
+      mapped.__originalHeaders = mapped.__originalHeaders ? { ...mapped.__originalHeaders } : {};
+
+      // mappingToUse keys are original headers; map to target keys
+      Object.keys(mappingToUse).forEach(origH => {
+        const target = mappingToUse[origH];
+        const normKey = normalizeHeaderKey(origH);
+        // move value from normKey to target
+        if (typeof mapped[normKey] !== 'undefined') {
+          mapped[target] = mapped[normKey];
+          // record that the target key now comes from this original header label
+          mapped.__originalHeaders[target] = origH;
+        }
+      });
+      return mapped;
+    }) : dadosCanonical;
+
+    if (dados.length === 0) {
+      toast.error('Nenhum dado válido encontrado no arquivo.');
+      return;
+    }
+
+    // Use current selected period as default; user can change in preview modal
+    const mesCompetencia = periodoSelecionado;
+
+    // Matching heuristics
+    const strip = (s = '') => s.toString().normalize('NFD').replace(/[\u0000-\u036f]/g, '').toLowerCase().trim();
+    const onlyDigits = (s = '') => s.toString().replace(/\D/g, '');
+
+    const preview = dados.map((row, idx) => {
+      let suggested: number | string | undefined;
+
+      // Prioridade 1: Match por nome completo EXATO (case insensitive, sem acentos)
+      if (row.colaborador) {
+        const target = strip(row.colaborador);
+        if (target.length >= 5) {  // Nome deve ter pelo menos 5 caracteres para ser confiável
+          const exactByName = colaboradoresAtualizados.find(c => {
+            const colaboradorNome = strip(c.nomeCompleto || c.nome);
+            return colaboradorNome === target;
+          });
+          if (exactByName) {
+            suggested = exactByName.id;
+          }
+        }
       }
-      // Perguntar mês de competência
-      const mesCompetencia = prompt('Digite o mês de competência (AAAA-MM):', periodoSelecionado);
-      if (!mesCompetencia || !/^\d{4}-\d{2}$/.test(mesCompetencia)) {
-        alert('Mês de competência inválido! Use o formato AAAA-MM (ex: 2025-11)');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
-      }
 
-      // Ajusta período selecionado antes da importação
-      setPeriodoSelecionado(mesCompetencia);
-
-      // Preparar preview com correspondências sugeridas (remoção de acentos, CPF, startsWith/includes)
-      const strip = (s = '') => s.toString().normalize('NFD').replace(/[\u0000-\u036f]/g, '').toLowerCase().trim();
-      const onlyDigits = (s = '') => s.toString().replace(/\D/g, '');
-
-      const preview = dados.map((row, idx) => {
-        let suggested: number | string | undefined;
-
-        // Try CPF match (if present in file)
+      // Prioridade 2: Match por CPF (apenas se não encontrou por nome e ambos têm CPF)
+      if (!suggested) {
         const cpfInRow = (row as any).cpf;
         if (cpfInRow) {
           const cpfNormalized = onlyDigits(cpfInRow);
-          const foundByCpf = colaboradores.find(c => onlyDigits(c.cpf || '') === cpfNormalized && cpfNormalized.length > 0);
-          if (foundByCpf) suggested = foundByCpf.id;
-        }
-
-        // Try name-based matches
-        if (!suggested && row.colaborador) {
-          const target = strip(row.colaborador);
-          // exact
-          const exact = colaboradores.find(c => strip(c.nomeCompleto || c.nome) === target);
-          if (exact) suggested = exact.id;
-          // startsWith
-          if (!suggested) {
-            const starts = colaboradores.find(c => strip(c.nomeCompleto || c.nome).startsWith(target.slice(0, Math.min(6, target.length))));
-            if (starts) suggested = starts.id;
-          }
-          // includes
-          if (!suggested) {
-            const incl = colaboradores.find(c => strip(c.nomeCompleto || c.nome).includes(target));
-            if (incl) suggested = incl.id;
+          if (cpfNormalized.length >= 11) {  // CPF deve ter pelo menos 11 dígitos
+            const foundByCpf = colaboradoresAtualizados.find(c => {
+              const colabCpf = onlyDigits(c.cpf || '');
+              return colabCpf.length >= 11 && colabCpf === cpfNormalized;
+            });
+            if (foundByCpf) {
+              suggested = foundByCpf.id;
+            }
           }
         }
+      }
 
-        return { index: idx, raw: row, suggestedId: suggested, selectedId: suggested ?? null };
+      // attach periodo into raw so ImportPreviewModal can default it
+      const rawWithPeriodo = { ...row, periodo: mesCompetencia };
+
+      // Check for duplicate: same person + same period (value may change, that's why reimporting)
+      const folhasExistentes = useFolhaPagamentoStore.getState().folhas;
+      const duplicate = folhasExistentes.find(f => {
+        const mesmoColaborador = suggested ? f.colaboradorId === suggested : 
+          strip(f.colaborador.nomeCompleto) === strip(row.colaborador);
+        const mesmoPeriodo = f.periodo === mesCompetencia;
+        return mesmoColaborador && mesmoPeriodo;
       });
 
-      setPreviewRows(preview);
-      setPreviewPeriodo(mesCompetencia);
-      setPreviewOpen(true);
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      // if no suggestion found, treat as a new collaborator by default
+      // Auto-set selectedId to match suggestedId for automatic association
+      return { 
+        index: idx, 
+        raw: rawWithPeriodo, 
+        suggestedId: suggested, 
+        selectedId: suggested ?? 'new',
+        existingFolhaId: duplicate?.id
+      };
+    });
+
+    // build original (unmapped) preview for undo
+    const originalPreview = dadosRaw.map((row, idx) => {
+      let suggested: number | string | undefined;
+
+      // Prioridade 1: Match por nome
+      if (row.colaborador) {
+        const target = strip(row.colaborador);
+        if (target.length >= 3) {
+          const exactByName = colaboradoresAtualizados.find(c => strip(c.nomeCompleto || c.nome) === target);
+          if (exactByName) suggested = exactByName.id;
+        }
       }
+
+      // Prioridade 2: Match por CPF
+      if (!suggested) {
+        const cpfInRow = (row as any).cpf;
+        if (cpfInRow) {
+          const cpfNormalized = onlyDigits(cpfInRow);
+          if (cpfNormalized.length >= 11) {
+            const foundByCpf = colaboradoresAtualizados.find(c => {
+              const colabCpf = onlyDigits(c.cpf || '');
+              return colabCpf.length >= 11 && colabCpf === cpfNormalized;
+            });
+            if (foundByCpf) suggested = foundByCpf.id;
+          }
+        }
+      }
+
+      const rawWithPeriodo = { ...row, periodo: mesCompetencia };
+
+      // original preview (unmapped) — default to 'new' when there's no suggested match
+      return { index: idx, raw: rawWithPeriodo, suggestedId: suggested, selectedId: suggested ?? 'new' };
+    });
+
+    setPreviewInvalid(false);
+    setPreviewRows(preview);
+    setPreviewOriginalRows(originalPreview);
+    setAppliedMappingName(mappingNameApplied);
+    setPreviewPeriodo(mesCompetencia);
+    setPreviewOpen(true);
+  };
+
+  // parse CSV/TSV text into AOA then delegate to processImportedAOA
+  const processImportedText = (text: string) => {
+    const parseTextToAOA = (txt: string): string[][] => {
+      const rawLines = txt.split(/\r?\n/).filter(l => l.trim() !== '');
+      if (rawLines.length === 0) return [];
+      const first = rawLines[0];
+      const delimiter = first.includes('\t') ? '\t' : ',';
+
+      const splitLine = (line: string) => {
+        if (delimiter === '\t') return line.split('\t').map(s => s.replace(/^"|"$/g, '').trim());
+        const out: string[] = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i+1] === '"') { cur += '"'; i++; continue; }
+            inQuotes = !inQuotes;
+            continue;
+          }
+          if (ch === ',' && !inQuotes) { out.push(cur.trim()); cur = ''; continue; }
+          cur += ch;
+        }
+        out.push(cur.trim());
+        return out.map(s => s.replace(/^"|"$/g, '').trim());
+      };
+
+      return rawLines.map(splitLine);
     };
-    
-    reader.readAsText(file);
+
+    const aoa = parseTextToAOA(text);
+    processImportedAOA(aoa);
   };
 
   const handleEditarFolha = (folha: FolhaPagamento) => {
@@ -397,26 +627,54 @@ export default function FolhaPagamentoPage() {
             <Plus className="w-4 h-4 mr-2 inline" />
             Nova Folha
           </Button>
-          <div className="relative">
-            <Button variant="outline" onClick={() => setShowExportMenu(v => !v)}>
+          <div className="relative export-menu-container">
+            <Button variant="outline" onClick={() => setShowExportMenu(!showExportMenu)}>
               <Download className="w-4 h-4 mr-2 inline" />
               Exportar
             </Button>
             {showExportMenu && (
-              <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded shadow-lg min-w-[120px]">
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => { setShowExportMenu(false); handleExportarArquivo('csv'); }}>CSV</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => { setShowExportMenu(false); handleExportarArquivo('xls'); }}>XLS</button>
+              <div className="absolute top-full mt-1 bg-white dark:bg-gray-800 border rounded shadow-lg z-10 min-w-[140px]">
+                <button
+                  onClick={() => { setShowExportMenu(false); handleExportarArquivo('csv'); }}
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  CSV
+                </button>
+                <button
+                  onClick={() => { setShowExportMenu(false); handleExportarArquivo('xls'); }}
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  XLSX
+                </button>
               </div>
             )}
           </div>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
             <Upload className="w-4 h-4 mr-2 inline" />
             Importar
           </Button>
-          <Button variant="outline" onClick={handleBaixarModelo}>
-            <FileSpreadsheet className="w-4 h-4 mr-2 inline" />
-            Baixar Modelo
-          </Button>
+          <div className="relative modelo-menu-container">
+            <Button variant="outline" onClick={() => setShowModeloMenu(!showModeloMenu)}>
+              <FileSpreadsheet className="w-4 h-4 mr-2 inline" />
+              Baixar Modelo
+            </Button>
+            {showModeloMenu && (
+              <div className="absolute top-full mt-1 bg-white dark:bg-gray-800 border rounded shadow-lg z-10 min-w-[140px]">
+                <button
+                  onClick={handleBaixarModeloCSV}
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  CSV
+                </button>
+                <button
+                  onClick={handleBaixarModeloXLS}
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  XLSX
+                </button>
+              </div>
+            )}
+          </div>
           <Button variant="outline" onClick={() => setModalPersonalizar(true)}>
             <SlidersHorizontal className="w-4 h-4 mr-2 inline" />
             Personalizar
@@ -424,10 +682,67 @@ export default function FolhaPagamentoPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,.tsv,.txt"
+            accept=".csv,.tsv,.txt,.xls,.xlsx"
             className="hidden"
             onChange={handleImportar}
           />
+
+          {/* Import modal with drag & drop to avoid native file picker popups */}
+          {importModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="bg-black/40 absolute inset-0" onClick={() => setImportModalOpen(false)} />
+              <div className="bg-white dark:bg-gray-900 rounded shadow-lg p-6 z-10 w-[720px]">
+                <h3 className="text-lg font-semibold mb-3">Importar arquivo</h3>
+                <p className="text-sm text-gray-600 mb-4">Somente arquivos XSL/CSV são permitidos.</p>
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      const name = (file.name || '').toLowerCase();
+                      if (name.endsWith('.xls') || name.endsWith('.xlsx')) {
+                        const fr = new FileReader();
+                        fr.onload = (ev) => {
+                          try {
+                            const data = ev.target?.result as ArrayBuffer;
+                            const wb = XLSX.read(data, { type: 'array' });
+                            const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+                            processImportedAOA(aoa as any);
+                          } catch (err) {
+                            console.error('Erro ao ler XLSX arrastado', err);
+                            toast.error('Não foi possível ler o arquivo Excel. Tente usar CSV.');
+                          }
+                          setImportModalOpen(false);
+                        };
+                        fr.readAsArrayBuffer(file);
+                      } else {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const text = event.target?.result as string;
+                          processImportedText(text);
+                          setImportModalOpen(false);
+                        };
+                        reader.readAsText(file);
+                      }
+                    }
+                  }}
+                        className="border-2 border-dashed rounded p-8 text-center text-gray-600 dark:text-gray-300 cursor-pointer"
+                        onClick={() => {
+                          // allow clicking to open the hidden file input
+                          if (fileInputRef.current) {
+                            fileInputRef.current.click();
+                          }
+                        }}
+                >
+                  Arraste o arquivo ou clique aqui
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setImportModalOpen(false)}>Cancelar</Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -693,6 +1008,11 @@ export default function FolhaPagamentoPage() {
             setFolhaSelecionada(null);
           }}
           onSave={handleSalvarFolha}
+          onDelete={(id) => {
+            try { removerFolha(id); } catch {}
+            setModalEditarAberto(false);
+            setFolhaSelecionada(null);
+          }}
         />
       )}
 
@@ -707,44 +1027,88 @@ export default function FolhaPagamentoPage() {
       {/* Import Preview Modal */}
       <ImportPreviewModal
         isOpen={previewOpen}
-        onClose={() => { setPreviewOpen(false); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+        invalid={previewInvalid}
+        onDownloadModel={handleBaixarModeloCSV}
+        onClose={() => { setPreviewOpen(false); setImportModalOpen(false); if (fileInputRef.current) fileInputRef.current.value = ''; }}
         rows={previewRows}
         colaboradores={colaboradores}
-        onConfirm={(localRows) => {
-          // Ensure periodo is set
-          if (previewPeriodo) setPeriodoSelecionado(previewPeriodo);
-
-          const mapped = localRows.map((r: any) => {
-            const sel = r.selectedId;
-            if (sel && sel !== 'new') {
-              const found = colaboradores.find(c => String(c.id) === String(sel));
-              if (found) {
-                return {
-                  ...r.raw,
-                  colaboradorId: found.id,
-                  colaboradorObject: {
-                    id: found.id,
-                    nomeCompleto: found.nomeCompleto || found.nome,
-                    cpf: found.cpf || '',
-                    setor: found.setor || '',
-                    funcao: found.funcao || '',
-                    empresa: found.empresa || '',
-                    regime: found.regime || 'CLT',
-                    contrato: found.contrato || 'CLT',
-                    situacao: 'ativo'
-                  }
-                };
-              }
-            }
-            // new or not associated -> leave raw data (store will create minimal collaborator)
-            return r.raw;
-          });
-
-          importarDePlanilha(mapped);
-          setPreviewOpen(false);
-          if (fileInputRef.current) fileInputRef.current.value = '';
-          alert(`${mapped.length} registro(s) importado(s) com sucesso!`);
+        periodo={previewPeriodo}
+        onSetPeriodo={(p) => setPreviewPeriodo(p)}
+        appliedMappingName={appliedMappingName}
+        onUndoMapping={() => {
+          if (previewOriginalRows) {
+            setPreviewRows(previewOriginalRows);
+            setAppliedMappingName(null);
+          }
         }}
+        onConfirm={(localRows) => {
+            // Ensure periodo is set
+            if (previewPeriodo) setPeriodoSelecionado(previewPeriodo);
+
+            // Separate updates from new inserts
+            const toUpdate: Array<{id: string, dados: any}> = [];
+            const toInsert: any[] = [];
+
+            localRows.forEach((r: any) => {
+              const sel = r.selectedId;
+              let rowData: any;
+              
+              if (sel && sel !== 'new') {
+                const found = colaboradores.find(c => String(c.id) === String(sel));
+                if (found) {
+                  rowData = {
+                    ...r.raw,
+                    colaboradorId: found.id,
+                    colaboradorObject: {
+                      id: found.id,
+                      nomeCompleto: found.nomeCompleto || found.nome,
+                      cpf: found.cpf || '',
+                      setor: found.setor || '',
+                      funcao: found.funcao || '',
+                      empresa: found.empresa || '',
+                      regime: found.regime || 'CLT',
+                      contrato: found.contrato || 'CLT',
+                      situacao: 'ativo'
+                    }
+                  };
+                } else {
+                  rowData = r.raw;
+                }
+              } else {
+                rowData = r.raw;
+              }
+
+              // If duplicate detected, check user's action choice
+              if (r.existingFolhaId && r.duplicateAction === 'update') {
+                toUpdate.push({ id: r.existingFolhaId, dados: rowData });
+              } else {
+                toInsert.push(rowData);
+              }
+            });
+
+            // Process updates
+            toUpdate.forEach(({ id, dados }) => {
+              atualizarFolha(id, dados);
+            });
+
+            // Process new inserts
+            if (toInsert.length > 0) {
+              importarDePlanilha(toInsert);
+            }
+
+            // Show toast
+            if (toUpdate.length > 0 && toInsert.length > 0) {
+              toast.success(`${toUpdate.length} atualizado(s), ${toInsert.length} novo(s) inserido(s)!`);
+            } else if (toUpdate.length > 0) {
+              toast.success(`${toUpdate.length} registro(s) atualizado(s)!`);
+            } else {
+              toast.success(`${toInsert.length} registro(s) importado(s) com sucesso!`);
+            }
+
+            setPreviewOpen(false);
+            setImportModalOpen(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          }}
       />
     </div>
   );

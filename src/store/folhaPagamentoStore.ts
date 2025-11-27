@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { FolhaPagamento, ColaboradorCompleto, NotaFiscal } from '../types';
+import { useColaboradoresStore } from './colaboradoresStore';
 
 interface FolhaPagamentoState {
   folhas: FolhaPagamento[];
@@ -425,6 +426,9 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
             empresa4Valor: parseFloat(linha.empresa4Valor) || (valorTotalSemReembolso * (e4p || 0) / 100) || undefined,
           };
 
+          // Keep id=0 for standalone payments (external contractors, etc)
+          // These are NOT added to colaboradoresStore - they only exist in the payment record
+
           return folha;
         });
 
@@ -433,6 +437,7 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
       
       gerarPlanilhaModelo: () => {
         const headers = [
+          'CPF',
           'COLABORADOR',
           'FUNÇÃO',
           'EMPRESA',
@@ -466,6 +471,7 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
         ];
 
         const exemplo = [
+          '12345678900',
           'João da Silva',
           'Analista',
           'CFO Consultoria',
@@ -498,8 +504,9 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
           '100'
         ];
         
+        // Generate CSV (comma-separated) with proper quoting
         const csv = [headers, exemplo]
-          .map(row => row.map(cell => `"${cell}"`).join('\t'))
+          .map(row => row.map(cell => `"${cell}"`).join(','))
           .join('\n');
         
         return csv;

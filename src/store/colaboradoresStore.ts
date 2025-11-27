@@ -52,10 +52,10 @@ interface ColaboradoresState {
 }
 
 const mock: Colaborador[] = [
-  { id: 1, nome: 'Ana Costa', cargo: 'Contadora', departamento: 'Financeiro', email: 'ana@cfo.com', telefone: '+55 11 98877-6655', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana', status: 'ativo', metaHorasMensais: 176 },
-  { id: 2, nome: 'Bruno Almeida', cargo: 'Analista de Dados', departamento: 'BI', email: 'bruno@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bruno', status: 'ativo', metaHorasMensais: 176 },
-  { id: 3, nome: 'Carla Pereira', cargo: 'Gerente de RH', departamento: 'RH', email: 'carla@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carla', status: 'ferias', metaHorasMensais: 176 },
-  { id: 4, nome: 'Diego Ruiz', cargo: 'Desenvolvedor', departamento: 'Tech', email: 'diego@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Diego', status: 'afastado', metaHorasMensais: 176 },
+  { id: 1, nome: 'Ana Costa', nomeCompleto: 'Ana Costa', cpf: '12345678901', cargo: 'Contadora', departamento: 'Financeiro', email: 'ana@cfo.com', telefone: '+55 11 98877-6655', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ana', status: 'ativo', metaHorasMensais: 176 },
+  { id: 2, nome: 'Bruno Almeida', nomeCompleto: 'Bruno Almeida', cpf: '23456789012', cargo: 'Analista de Dados', departamento: 'BI', email: 'bruno@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bruno', status: 'ativo', metaHorasMensais: 176 },
+  { id: 3, nome: 'Carla Pereira', nomeCompleto: 'Carla Pereira', cpf: '34567890123', cargo: 'Gerente de RH', departamento: 'RH', email: 'carla@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carla', status: 'ferias', metaHorasMensais: 176 },
+  { id: 4, nome: 'Diego Ruiz', nomeCompleto: 'Diego Ruiz', cpf: '45678901234', cargo: 'Desenvolvedor', departamento: 'Tech', email: 'diego@cfo.com', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Diego', status: 'afastado', metaHorasMensais: 176 },
 ];
 
 export const useColaboradoresStore = create<ColaboradoresState>()(
