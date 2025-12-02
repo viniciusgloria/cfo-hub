@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
@@ -36,6 +36,10 @@ export function Solicitacoes() {
   const [formData, setFormData] = useState({ tipo: 'material', titulo: '', descricao: '', urgencia: 'media' });
   const [touched, setTouched] = useState({ titulo: false, descricao: false });
 
+  // Estado para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+
   const { solicitacoes, adicionarSolicitacao, atualizarStatus } = useSolicitacoesStore();
   const user = useAuthStore((state) => state.user);
 
@@ -51,7 +55,19 @@ export function Solicitacoes() {
     return true;
   });
 
+  // Cálculos de paginação
+  const totalItems = solicitacoesFiltradas.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const solicitacoesPaginadas = solicitacoesFiltradas.slice(startIndex, endIndex);
+
   const [isLoading, setIsLoading] = useState(true);
+
+  // Reset para página 1 quando aba muda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   useEffect(() => {
     const t = setTimeout(() => setIsLoading(false), 350);
@@ -183,8 +199,9 @@ export function Solicitacoes() {
         ) : solicitacoesFiltradas.length === 0 ? (
           <EmptyState title="Nenhuma solicitação" description="Não há solicitações para exibir." cta={<Button onClick={() => setIsModalOpen(true)}>Nova Solicitação</Button>} />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {solicitacoesFiltradas.map((sol) => {
+          <>
+          <div className="grid grid-cols-1 gap-4">
+            {solicitacoesPaginadas.map((sol) => {
               return (
                 <Card
                   key={sol.id}
@@ -260,6 +277,92 @@ export function Solicitacoes() {
           );
             })}
           </div>
+
+          {/* Controles de Paginação */}
+          {totalPages > 1 && (
+            <Card className="mt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} solicitações
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="dark:text-white"
+                    aria-label="Primeira página"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="dark:text-white"
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          Math.abs(page - currentPage) <= 1
+                        );
+                      })
+                      .map((page, idx, arr) => {
+                        const prevPage = arr[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        
+                        return (
+                          <div key={page} className="flex gap-1">
+                            {showEllipsis && (
+                              <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>
+                            )}
+                            <Button
+                              variant={currentPage === page ? "primary" : "outline"}
+                              onClick={() => setCurrentPage(page)}
+                              className={currentPage === page ? "" : "dark:text-white"}
+                              aria-label={`Página ${page}`}
+                              aria-current={currentPage === page ? "page" : undefined}
+                            >
+                              {page}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="dark:text-white"
+                    aria-label="Próxima página"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="dark:text-white"
+                    aria-label="Última página"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+          </>
         )}
       </Tabs>
 

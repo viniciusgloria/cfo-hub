@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Camera, Save, Eye, EyeOff, UserCog } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { toast } from 'react-hot-toast';
 import { SiDiscord } from 'react-icons/si';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -68,6 +69,11 @@ export function MeuPerfil() {
 
         const resizedDataUrl = canvas.toDataURL(file.type);
         setAvatar(resizedDataUrl);
+        // Atualizar avatar no auth store (perfil) e nos colaboradores (se houver colaborador com mesmo email)
+        useAuthStore.getState().updateAvatar(resizedDataUrl);
+        if (email) {
+          useColaboradoresStore.getState().updateAvatarByEmail(email, resizedDataUrl);
+        }
         toast.success('Foto atualizada com sucesso!');
         setUploadingFoto(false);
       };

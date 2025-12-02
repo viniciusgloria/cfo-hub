@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import toast from 'react-hot-toast';
 import { FolhaPagamento } from '../types';
+import { Avatar } from '../components/Avatar';
 
 interface EditarFolhaModalProps {
   folha: FolhaPagamento | null;
@@ -136,6 +137,21 @@ export function EditarFolhaModal({ folha, onClose, onSave, onDelete }: EditarFol
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
             Informações do Colaborador
           </h3>
+          <div className="flex items-center gap-4 mb-4">
+            <Avatar
+              src={folha.colaborador.avatar}
+              alt={folha.colaborador.nomeCompleto}
+              size="lg"
+              className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold flex items-center justify-center"
+            >
+              {!folha.colaborador.avatar && folha.colaborador.nomeCompleto
+                ? folha.colaborador.nomeCompleto.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase()
+                : null}
+            </Avatar>
+            <div>
+              <div className="font-semibold text-gray-900 dark:text-white">{folha.colaborador.nomeCompleto}</div>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-500 dark:text-gray-400">Nome:</span>{' '}

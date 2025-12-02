@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Star, CheckCircle, Clock, AlertCircle, TrendingUp, Award } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, CheckCircle, Clock, AlertCircle, TrendingUp, Award, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
@@ -30,6 +30,29 @@ export function Avaliacoes() {
   const pendentes = user ? getAvaliacoesPendentes(user.id) : [];
   const recebidas = user ? getAvaliacoesRecebidas(user.id) : [];
   const recebidasConcluidas = recebidas.filter((a) => a.status === 'concluida');
+
+  const [activeTab, setActiveTab] = useState<'pendentes' | 'recebidas'>('pendentes');
+
+  // Paginação
+  const [currentPagePendentes, setCurrentPagePendentes] = useState(1);
+  const [currentPageRecebidas, setCurrentPageRecebidas] = useState(1);
+  const itemsPerPage = 20;
+
+  const totalPendentes = pendentes.length;
+  const totalPagesPendentes = Math.ceil(totalPendentes / itemsPerPage);
+  const startPendentes = (currentPagePendentes - 1) * itemsPerPage;
+  const pendentesPaginados = pendentes.slice(startPendentes, startPendentes + itemsPerPage);
+
+  const totalRecebidas = recebidas.length;
+  const totalPagesRecebidas = Math.ceil(totalRecebidas / itemsPerPage);
+  const startRecebidas = (currentPageRecebidas - 1) * itemsPerPage;
+  const recebidasPaginadas = recebidas.slice(startRecebidas, startRecebidas + itemsPerPage);
+
+  // Reset pagination quando muda activeTab
+  useEffect(() => {
+    setCurrentPagePendentes(1);
+    setCurrentPageRecebidas(1);
+  }, [activeTab]);
 
   // Média geral do usuário considerando todas as avaliações concluídas recebidas
   const minhaMediaGeral = recebidasConcluidas.length > 0
@@ -186,7 +209,7 @@ export function Avaliacoes() {
             Avaliações Pendentes
           </h3>
           <div className="space-y-3">
-            {pendentes.map((avaliacao) => {
+            {pendentesPaginados.map((avaliacao) => {
               const avaliado = getColaborador(avaliacao.avaliadoId);
               if (!avaliado) return null;
 
@@ -211,6 +234,48 @@ export function Avaliacoes() {
               );
             })}
           </div>
+
+          {/* Paginação Pendentes */}
+          {totalPagesPendentes > 1 && (
+            <Card className="mt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Mostrando {startPendentes + 1}-{Math.min(startPendentes + itemsPerPage, totalPendentes)} de {totalPendentes} avaliações
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setCurrentPagePendentes(1)} disabled={currentPagePendentes === 1} className="dark:text-white" aria-label="Primeira página">
+                    <ChevronsLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" onClick={() => setCurrentPagePendentes(prev => Math.max(1, prev - 1))} disabled={currentPagePendentes === 1} className="dark:text-white" aria-label="Página anterior">
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPagesPendentes }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPagesPendentes || Math.abs(page - currentPagePendentes) <= 1)
+                      .map((page, idx, arr) => {
+                        const prevPage = arr[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        return (
+                          <div key={page} className="flex gap-1">
+                            {showEllipsis && <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>}
+                            <Button variant={currentPagePendentes === page ? "primary" : "outline"} onClick={() => setCurrentPagePendentes(page)} className={currentPagePendentes === page ? "" : "dark:text-white"} aria-label={`Página ${page}`}>
+                              {page}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <Button variant="outline" onClick={() => setCurrentPagePendentes(prev => Math.min(totalPagesPendentes, prev + 1))} disabled={currentPagePendentes === totalPagesPendentes} className="dark:text-white" aria-label="Próxima página">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" onClick={() => setCurrentPagePendentes(totalPagesPendentes)} disabled={currentPagePendentes === totalPagesPendentes} className="dark:text-white" aria-label="Última página">
+                    <ChevronsRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
         </Card>
       )}
 
@@ -225,7 +290,7 @@ export function Avaliacoes() {
               Você ainda não recebeu avaliações
             </p>
           ) : (
-            recebidas.map((avaliacao) => {
+            recebidasPaginadas.map((avaliacao) => {
               const avaliador = getColaborador(avaliacao.avaliadorId);
               if (!avaliador) return null;
 
@@ -269,6 +334,48 @@ export function Avaliacoes() {
             })
           )}
         </div>
+
+        {/* Paginação Recebidas */}
+        {totalPagesRecebidas > 1 && (
+          <Card className="mt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Mostrando {startRecebidas + 1}-{Math.min(startRecebidas + itemsPerPage, totalRecebidas)} de {totalRecebidas} avaliações
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setCurrentPageRecebidas(1)} disabled={currentPageRecebidas === 1} className="dark:text-white" aria-label="Primeira página">
+                  <ChevronsLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" onClick={() => setCurrentPageRecebidas(prev => Math.max(1, prev - 1))} disabled={currentPageRecebidas === 1} className="dark:text-white" aria-label="Página anterior">
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPagesRecebidas }, (_, i) => i + 1)
+                    .filter(page => page === 1 || page === totalPagesRecebidas || Math.abs(page - currentPageRecebidas) <= 1)
+                    .map((page, idx, arr) => {
+                      const prevPage = arr[idx - 1];
+                      const showEllipsis = prevPage && page - prevPage > 1;
+                      return (
+                        <div key={page} className="flex gap-1">
+                          {showEllipsis && <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>}
+                          <Button variant={currentPageRecebidas === page ? "primary" : "outline"} onClick={() => setCurrentPageRecebidas(page)} className={currentPageRecebidas === page ? "" : "dark:text-white"} aria-label={`Página ${page}`}>
+                            {page}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                </div>
+                <Button variant="outline" onClick={() => setCurrentPageRecebidas(prev => Math.min(totalPagesRecebidas, prev + 1))} disabled={currentPageRecebidas === totalPagesRecebidas} className="dark:text-white" aria-label="Próxima página">
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" onClick={() => setCurrentPageRecebidas(totalPagesRecebidas)} disabled={currentPageRecebidas === totalPagesRecebidas} className="dark:text-white" aria-label="Última página">
+                  <ChevronsRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
       </Card>
 
       {/* Modal de Avaliação */}

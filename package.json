@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@types/file-saver": "^2.0.7",
     "lucide-react": "^0.293.0",
     "react": "^18.2.0",

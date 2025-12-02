@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { Clock, CheckCircle, XCircle, Paperclip, ImageIcon, X, ClipboardCheck } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Paperclip, ImageIcon, X, ClipboardCheck, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Badge } from '../components/ui/Badge';
@@ -32,6 +32,10 @@ export function SolicitacoesPonto() {
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Estado para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  
   const { solicitacoes, atualizarStatus } = useAjustesPontoStore();
   const { user } = useAuthStore();
   const { aplicarAjusteAprovado } = usePontoStore();
@@ -55,6 +59,18 @@ export function SolicitacoesPonto() {
     if (activeTab === 'historico') return s.status !== 'pendente';
     return true;
   });
+
+  // Cálculos de paginação
+  const totalItems = solicitacoesFiltradas.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const solicitacoesPaginadas = solicitacoesFiltradas.slice(startIndex, endIndex);
+
+  // Reset para página 1 quando aba muda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   const handleAprovar = (id: string) => {
     setActionId(id);
@@ -167,8 +183,9 @@ export function SolicitacoesPonto() {
             description={activeTab === 'pendentes' ? 'Não há solicitações pendentes no momento.' : 'Não há solicitações para exibir.'} 
           />
         ) : (
+          <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {solicitacoesFiltradas.map((sol) => (
+            {solicitacoesPaginadas.map((sol) => (
               <Card key={sol.id} className="p-6 hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -284,6 +301,92 @@ export function SolicitacoesPonto() {
               </Card>
             ))}
           </div>
+
+          {/* Controles de Paginação */}
+          {totalPages > 1 && (
+            <Card className="mt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} solicitações
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="dark:text-white"
+                    aria-label="Primeira página"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="dark:text-white"
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          Math.abs(page - currentPage) <= 1
+                        );
+                      })
+                      .map((page, idx, arr) => {
+                        const prevPage = arr[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        
+                        return (
+                          <div key={page} className="flex gap-1">
+                            {showEllipsis && (
+                              <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>
+                            )}
+                            <Button
+                              variant={currentPage === page ? "primary" : "outline"}
+                              onClick={() => setCurrentPage(page)}
+                              className={currentPage === page ? "" : "dark:text-white"}
+                              aria-label={`Página ${page}`}
+                              aria-current={currentPage === page ? "page" : undefined}
+                            >
+                              {page}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="dark:text-white"
+                    aria-label="Próxima página"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="dark:text-white"
+                    aria-label="Última página"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+          </>
         )}
       </Tabs>
 

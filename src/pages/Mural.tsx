@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, ChangeEvent, useMemo } from 'react';
-import { Plus, ImageIcon, Filter, MessageSquare } from 'lucide-react';
+import { Plus, ImageIcon, Filter, MessageSquare, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Dropzone } from '../components/ui/Dropzone';
 import FilterPill from '../components/ui/FilterPill';
 import { Card } from '../components/ui/Card';

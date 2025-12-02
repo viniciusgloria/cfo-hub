@@ -6,15 +6,27 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
+    --primary: 166 63% 40%; /* emerald-ish HSL */
+    --card-bg: 0 0% 100%;
+    --card-border: 220 14% 90%;
+    --muted: 215 20% 55%;
+    --text: 210 9% 9%;
   }
 
   .dark {
-    --background: 0 0% 8%;
+    --background: 220 13% 8%;
     --foreground: 0 0% 98%;
+    --primary: 166 60% 45%;
+    --card-bg: 220 13% 12%;
+    --card-border: 220 9% 18%;
+    --muted: 215 12% 70%;
+    --text: 220 14% 96%;
   }
 
   body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors;
+    background-color: hsl(var(--background));
+    color: hsl(var(--text));
+    transition: background-color .15s, color .15s;
   }
 }
 
@@ -31,8 +43,8 @@
 
 /* focus-visible helper */
 :focus-visible {
-	outline: 3px solid rgba(16,185,129,0.25);
-	outline-offset: 2px;
+  outline: 3px solid hsla(var(--primary), 0.25);
+  outline-offset: 2px;
 }
 
 /* Avatar utilities */
@@ -47,3 +59,33 @@
 /* Hide scrollbar but allow scrolling */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Ripple animation */
+@keyframes ripple {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.2);
+  }
+  80% {
+    opacity: 0.2;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+.animate-ripple {
+  animation: ripple 0.4s linear;
+}
+
+/* Highlight animation on table row click */
+.tr-clicked {
+  animation: row-highlight 0.5s;
+}
+
+@keyframes row-highlight {
+  0% { background-color: #a7f3d0; }
+  100% { background-color: inherit; }
+}

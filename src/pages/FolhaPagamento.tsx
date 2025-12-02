@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { PersonalizarColunasModal } from '../components/PersonalizarColunasModal';
 // Removido import duplicado de ícones
-import { FileText, Plus, Download, Upload, DollarSign, FileSpreadsheet, SlidersHorizontal } from 'lucide-react';
+import { FileText, Plus, Download, Upload, DollarSign, FileSpreadsheet, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useFolhaPagamentoStore } from '../store/folhaPagamentoStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { Avatar } from '../components/Avatar';
+import { SkeletonCard } from '../components/ui/SkeletonCard';
 import { PageBanner } from '../components/ui/PageBanner';
 import { EditarFolhaModal } from '../components/EditarFolhaModal.tsx';
 import { NovaFolhaModal } from '../components/NovaFolhaModal';
@@ -18,12 +20,20 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { headersSimilarity } from '../utils/importMappings';
 import { FolhaPagamento } from '../types';
+import { Tooltip } from '../components/ui/Tooltip';
 
 export default function FolhaPagamentoPage() {
+      const [sortCol, setSortCol] = useState<string | null>(null);
+      const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+      const sortableCols = ['colaborador', 'empresa', 'contrato', 'valor'];
+    // Estado para paginação
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(20);
     // Estado para menu de exportação
     const [showExportMenu, setShowExportMenu] = useState(false);
     // Estado para menu de download de modelo
     const [showModeloMenu, setShowModeloMenu] = useState(false);
+    // Removido estado não utilizado: clickedRow
 
     // Fechar menu de exportação ao clicar fora
     useEffect(() => {
@@ -90,9 +100,46 @@ export default function FolhaPagamentoPage() {
   const [previewOriginalRows, setPreviewOriginalRows] = useState<any[] | null>(null);
   const [appliedMappingName, setAppliedMappingName] = useState<string | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchLocal, setSearchLocal] = useState<string>(busca || '');
+  const searchDebounceRef = useRef<any>(null);
 
   const { colaboradores } = useColaboradoresStore();
-  const folhasFiltradas = getFolhasFiltradas();
+  let folhasFiltradas = getFolhasFiltradas();
+  if (sortCol && sortableCols.includes(sortCol)) {
+    const colMap: Record<string, (f: any) => any> = {
+      colaborador: f => f.colaborador?.nomeCompleto?.toLowerCase?.() ?? '',
+      empresa: f => f.colaborador?.empresa?.toLowerCase?.() ?? '',
+      contrato: f => f.colaborador?.contrato?.toLowerCase?.() ?? '',
+      valor: f => f.valor ?? 0,
+    };
+    const getVal = colMap[sortCol];
+    if (getVal) {
+      folhasFiltradas = [...folhasFiltradas].sort((a, b) => {
+        const aVal = getVal(a);
+        const bVal = getVal(b);
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        }
+        return 0;
+      });
+    }
+  }
+
+  // Cálculos de paginação
+  const totalItems = folhasFiltradas.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const folhasPaginadas = folhasFiltradas.slice(startIndex, endIndex);
+
+  // Reset para página 1 quando filtros ou ordenação mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filtroSituacao, filtroContrato, busca, sortCol, sortDir, periodoSelecionado]);
 
   const handleNovaFolha = () => {
     setModalNovoAberto(true);
@@ -138,6 +185,26 @@ export default function FolhaPagamentoPage() {
 
     // Usar a função adicionarFolha da store
     useFolhaPagamentoStore.getState().adicionarFolha(novaFolha as any);
+  };
+
+  // Debounced search to reduce re-renders
+  useEffect(() => {
+    setSearchLocal(busca || '');
+  }, [busca]);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setBusca(searchLocal);
+    }, 250);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchLocal]);
+
+  // Show skeleton loader briefly when period changes to improve perceived performance
+  const handlePeriodoChange = (value: string) => {
+    setIsLoading(true);
+    setPeriodoSelecionado(value);
+    window.setTimeout(() => setIsLoading(false), 300);
   };
 
 
@@ -577,14 +644,14 @@ export default function FolhaPagamentoPage() {
           <div className="flex-1 min-w-[200px]">
             <Input
               placeholder="Buscar por colaborador, função..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              value={searchLocal}
+              onChange={(e) => setSearchLocal(e.target.value)}
             />
           </div>
           
           <select
             value={periodoSelecionado}
-            onChange={(e) => setPeriodoSelecionado(e.target.value)}
+            onChange={(e) => handlePeriodoChange(e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             {periodos.map((periodo) => {
@@ -605,7 +672,7 @@ export default function FolhaPagamentoPage() {
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             {['Todos', 'Pendente', 'Agendado', 'Pago', 'Cancelado'].map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>{opt === 'Todos' ? 'Status' : opt}</option>
             ))}
           </select>
 
@@ -615,7 +682,7 @@ export default function FolhaPagamentoPage() {
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             {['Todos', 'CLT', 'PJ'].map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>{opt === 'Todos' ? 'Contrato' : opt}</option>
             ))}
           </select>
         </div>
@@ -626,8 +693,8 @@ export default function FolhaPagamentoPage() {
             Nova Folha
           </Button>
           <div className="relative export-menu-container">
-            <Button variant="outline" onClick={() => setShowExportMenu(!showExportMenu)}>
-              <Download className="w-4 h-4 mr-2 inline" />
+            <Button variant="outline" onClick={() => setShowExportMenu(!showExportMenu)} className="dark:text-white">
+              <Download className="w-4 h-4 mr-2 inline dark:text-white" />
               Exportar
             </Button>
             {showExportMenu && (
@@ -647,13 +714,13 @@ export default function FolhaPagamentoPage() {
               </div>
             )}
           </div>
-          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
-            <Upload className="w-4 h-4 mr-2 inline" />
+          <Button variant="outline" onClick={() => setImportModalOpen(true)} className="dark:text-white">
+            <Upload className="w-4 h-4 mr-2 inline dark:text-white" />
             Importar
           </Button>
           <div className="relative modelo-menu-container">
-            <Button variant="outline" onClick={() => setShowModeloMenu(!showModeloMenu)}>
-              <FileSpreadsheet className="w-4 h-4 mr-2 inline" />
+            <Button variant="outline" onClick={() => setShowModeloMenu(!showModeloMenu)} className="dark:text-white">
+              <FileSpreadsheet className="w-4 h-4 mr-2 inline dark:text-white" />
               Baixar Modelo
             </Button>
             {showModeloMenu && (
@@ -673,8 +740,8 @@ export default function FolhaPagamentoPage() {
               </div>
             )}
           </div>
-          <Button variant="outline" onClick={() => setModalPersonalizar(true)}>
-            <SlidersHorizontal className="w-4 h-4 mr-2 inline" />
+          <Button variant="outline" onClick={() => setModalPersonalizar(true)} className="dark:text-white">
+            <SlidersHorizontal className="w-4 h-4 mr-2 inline dark:text-white" />
             Personalizar
           </Button>
           <input
@@ -746,65 +813,77 @@ export default function FolhaPagamentoPage() {
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="bg-blue-50 dark:bg-blue-900/20">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Valor Base</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(totais.valor)}
-              </p>
+        {isLoading ? (
+          // Show skeleton boxes while loading
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={`summary-skel-${i}`} className="animate-pulse rounded-lg p-4" style={{ backgroundColor: 'hsl(var(--card-bg))', border: `1px solid hsl(var(--card-border))` }}>
+              <div className="h-4 w-20 mb-3" style={{ backgroundColor: 'hsl(var(--card-border))' }} />
+              <div className="h-6 w-32" style={{ backgroundColor: 'hsl(var(--card-border))' }} />
             </div>
-          </div>
-        </Card>
+          ))
+        ) : (
+          <>
+            <Card className="bg-blue-50 dark:bg-blue-900/20">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Valor Base</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(totais.valor)}
+                  </p>
+                </div>
+              </div>
+            </Card>
 
-        <Card className="bg-green-50 dark:bg-green-900/20">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8 text-green-600 dark:text-green-400" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Adicional</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(totais.adicional)}
-              </p>
-            </div>
-          </div>
-        </Card>
+            <Card className="bg-green-50 dark:bg-green-900/20">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-8 h-8 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Adicional</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(totais.adicional)}
+                  </p>
+                </div>
+              </div>
+            </Card>
 
-        <Card className="bg-purple-50 dark:bg-purple-900/20">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Reembolso</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(totais.reembolso)}
-              </p>
-            </div>
-          </div>
-        </Card>
+            <Card className="bg-purple-50 dark:bg-purple-900/20">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Reembolso</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(totais.reembolso)}
+                  </p>
+                </div>
+              </div>
+            </Card>
 
-        <Card className="bg-red-50 dark:bg-red-900/20">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8 text-red-600 dark:text-red-400" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Desconto</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(totais.desconto)}
-              </p>
-            </div>
-          </div>
-        </Card>
+            <Card className="bg-red-50 dark:bg-red-900/20">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-8 h-8 text-red-600 dark:text-red-400" />
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Desconto</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(totais.desconto)}
+                  </p>
+                </div>
+              </div>
+            </Card>
 
-        <Card className="bg-indigo-50 dark:bg-indigo-900/20">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(totais.valorTotal)}
-              </p>
-            </div>
-          </div>
-        </Card>
+            <Card className="bg-indigo-50 dark:bg-indigo-900/20">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(totais.valorTotal)}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Tabela de Folhas */}
@@ -823,53 +902,204 @@ export default function FolhaPagamentoPage() {
       ) : (
         <Card>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-900 z-10">Colaborador</th>
-                  {colunas.includes('funcao') && <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Função</th>}
-                  {colunas.includes('empresa') && <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Empresa</th>}
-                  {colunas.includes('contrato') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Contrato</th>}
-                  {colunas.includes('valor') && <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Valor</th>}
-                  {colunas.includes('adicional') && <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Adicional</th>}
-                  {colunas.includes('reembolso') && <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Reembolso</th>}
-                  {colunas.includes('desconto') && <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Desconto</th>}
-                  {colunas.includes('total') && <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Total</th>}
-                  {colunas.includes('valorTotalSemReembolso') && <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">V. Total s/ Reemb</th>}
-                  {colunas.includes('empresa1') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Empresa 1</th>}
-                  {colunas.includes('empresa2') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Empresa 2</th>}
-                  {colunas.includes('empresa3') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Empresa 3</th>}
-                  {colunas.includes('empresa4') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Empresa 4</th>}
-                  {colunas.includes('situacao') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Situação</th>}
-                  {colunas.includes('dataPagamento') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Data Pgto</th>}
-                  {colunas.includes('nf') && folhasFiltradas.some(f => f.colaborador.contrato === 'PJ') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">NF</th>}
-                  {colunas.includes('statusNF') && folhasFiltradas.some(f => f.colaborador.contrato === 'PJ') && <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Status NF</th>}
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky right-0 bg-white dark:bg-gray-900 z-10">Ações</th>
+                  <th
+                    className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 sticky left-0 top-0 bg-white dark:bg-gray-900 z-30 cursor-pointer select-none min-w-[180px] focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    tabIndex={0}
+                    aria-label="Ordenar por colaborador"
+                    onClick={() => {
+                      if (sortCol === 'colaborador') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                      setSortCol('colaborador');
+                    }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { if (sortCol === 'colaborador') setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); setSortCol('colaborador'); } }}
+                  >
+                    <span className="inline-flex items-center" aria-hidden="true">
+                      Colaborador
+                      <span className="ml-1">
+                        {sortCol === 'colaborador' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                      </span>
+                    </span>
+                  </th>
+                  {colunas.includes('funcao') && <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 min-w-[140px]">Função</th>}
+                  {colunas.includes('empresa') && (
+                    <th
+                      className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none min-w-[160px]"
+                      onClick={() => {
+                        if (sortCol === 'empresa') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                        setSortCol('empresa');
+                      }}
+                    >
+                      <span className="inline-flex items-center">
+                        Empresa
+                        <span className="ml-1">
+                          {sortCol === 'empresa' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </span>
+                    </th>
+                  )}
+                  {colunas.includes('contrato') && (
+                    <th
+                      className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none min-w-[110px]"
+                      onClick={() => {
+                        if (sortCol === 'contrato') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                        setSortCol('contrato');
+                      }}
+                    >
+                      <span className="inline-flex items-center">
+                        Contrato
+                        <span className="ml-1">
+                          {sortCol === 'contrato' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </span>
+                    </th>
+                  )}
+                  {colunas.includes('valor') && (
+                    <Tooltip content="Valor base do pagamento">
+                      <th
+                        className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none min-w-[110px]"
+                        onClick={() => {
+                          if (sortCol === 'valor') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                          setSortCol('valor');
+                        }}
+                      >
+                        <span className="inline-flex items-center">
+                          Valor
+                          <span className="ml-1">
+                            {sortCol === 'valor' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                          </span>
+                        </span>
+                      </th>
+                    </Tooltip>
+                  )}
+                  {colunas.includes('adicional') && (
+                    <Tooltip content="Adicional">
+                      <th
+                        className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none"
+                        onClick={() => {
+                          if (sortCol === 'adicional') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                          setSortCol('adicional');
+                        }}
+                      >
+                        Adicional
+                        {sortCol === 'adicional' && (
+                          <span className="inline-block ml-1 align-middle">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </th>
+                    </Tooltip>
+                  )}
+                  {colunas.includes('reembolso') && (
+                    <Tooltip content="Reembolsos">
+                      <th
+                        className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none"
+                        onClick={() => {
+                          if (sortCol === 'reembolso') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                          setSortCol('reembolso');
+                        }}
+                      >
+                        Reembolso
+                        {sortCol === 'reembolso' && (
+                          <span className="inline-block ml-1 align-middle">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </th>
+                    </Tooltip>
+                  )}
+                  {colunas.includes('desconto') && (
+                    <Tooltip content="Descontos">
+                      <th
+                        className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none"
+                        onClick={() => {
+                          if (sortCol === 'desconto') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                          setSortCol('desconto');
+                        }}
+                      >
+                        Desconto
+                        {sortCol === 'desconto' && (
+                          <span className="inline-block ml-1 align-middle">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </th>
+                    </Tooltip>
+                  )}
+                  {colunas.includes('total') && (
+                    <Tooltip content="Valor Total">
+                      <th
+                        className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none"
+                        onClick={() => {
+                          if (sortCol === 'valorTotal') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                          setSortCol('valorTotal');
+                        }}
+                      >
+                        Total
+                        {sortCol === 'valorTotal' && (
+                          <span className="inline-block ml-1 align-middle">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </th>
+                    </Tooltip>
+                  )}
+                  {colunas.includes('valorTotalSemReembolso') && (
+                    <Tooltip content="Valor total sem reembolso">
+                      <th
+                        className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky top-0 bg-white dark:bg-gray-900 z-10 cursor-pointer select-none"
+                        onClick={() => {
+                          if (sortCol === 'valorTotalSemReembolso') setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                          setSortCol('valorTotalSemReembolso');
+                        }}
+                      >
+                        V. Total s/ Reemb
+                        {sortCol === 'valorTotalSemReembolso' && (
+                          <span className="inline-block ml-1 align-middle">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </th>
+                    </Tooltip>
+                  )}
+                  {colunas.includes('empresa1') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">Empresa 1</th>}
+                  {colunas.includes('empresa2') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">Empresa 2</th>}
+                  {colunas.includes('empresa3') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden lg:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">Empresa 3</th>}
+                  {colunas.includes('empresa4') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden lg:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">Empresa 4</th>}
+                  {colunas.includes('situacao') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">Situação</th>}
+                  {colunas.includes('dataPagamento') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">Data Pgto</th>}
+                  {colunas.includes('nf') && folhasFiltradas.some(f => f.colaborador.contrato === 'PJ') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">NF</th>}
+                  {colunas.includes('statusNF') && folhasFiltradas.some(f => f.colaborador.contrato === 'PJ') && <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell sticky top-0 bg-white dark:bg-gray-900 z-10">Status NF</th>}
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300 sticky right-0 top-0 bg-white dark:bg-gray-900 z-30">Ações</th>
                 </tr>
               </thead>
-              <tbody>
-                {folhasFiltradas.map((folha) => (
+              {isLoading ? (
+                <tbody>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`} className="border-b border-gray-100 dark:border-gray-800">
+                      <td colSpan={20} className="py-3 px-4">
+                        <SkeletonCard />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ) : (
+                <tbody>
+                {folhasPaginadas.map((folha) => (
                   <tr
                     key={folha.id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
-                    onClick={() => handleEditarFolha(folha)}
+                    className="border-b border-gray-100 dark:border-gray-800 odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 text-xs sm:text-sm"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleEditarFolha(folha); }}
                   >
-                    <td className="py-3 px-4 sticky left-0 bg-white dark:bg-gray-900 z-10">
+                    <td className="py-3 px-4 sticky left-0 z-30 bg-inherit">
                       <div className="flex items-center gap-3">
-                        {folha.colaborador.avatar && (
-                          <img
-                            src={folha.colaborador.avatar}
-                            alt={folha.colaborador.nomeCompleto}
-                            className="w-8 h-8 rounded-full"
-                          />
-                        )}
+                        <Avatar
+                          src={folha.colaborador.avatar}
+                          alt={folha.colaborador.nomeCompleto}
+                          size="sm"
+                          className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold flex items-center justify-center"
+                        >
+                          {!folha.colaborador.avatar && folha.colaborador.nomeCompleto
+                            ? folha.colaborador.nomeCompleto.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase()
+                            : null}
+                        </Avatar>
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
                             {folha.colaborador.nomeCompleto}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {folha.colaborador.setor}
-                          </p>
+                          {/* setor removed from list view - not needed */}
                         </div>
                       </div>
                     </td>
@@ -882,12 +1112,12 @@ export default function FolhaPagamentoPage() {
                         </Badge>
                       </td>
                     )}
-                    {colunas.includes('valor') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300">{formatCurrency(folha.valor)}</td>}
-                    {colunas.includes('adicional') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300">{formatCurrency(folha.adicional)}</td>}
-                    {colunas.includes('reembolso') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300">{formatCurrency(folha.reembolso)}</td>}
-                    {colunas.includes('desconto') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300">{formatCurrency(folha.desconto)}</td>}
-                    {colunas.includes('total') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(folha.valorTotal)}</td>}
-                    {colunas.includes('valorTotalSemReembolso') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300">{formatCurrency(folha.valorTotalSemReembolso)}</td>}
+                    {colunas.includes('valor') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[120px]">{formatCurrency(folha.valor)}</td>}
+                    {colunas.includes('adicional') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[120px]">{formatCurrency(folha.adicional)}</td>}
+                    {colunas.includes('reembolso') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[120px]">{formatCurrency(folha.reembolso)}</td>}
+                    {colunas.includes('desconto') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[120px]">{formatCurrency(folha.desconto)}</td>}
+                    {colunas.includes('total') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white min-w-[140px]">{formatCurrency(folha.valorTotal)}</td>}
+                    {colunas.includes('valorTotalSemReembolso') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[140px]">{formatCurrency(folha.valorTotalSemReembolso)}</td>}
                     {colunas.includes('empresa1') && (
                       <td className="py-3 px-4 text-center text-xs text-gray-600 dark:text-gray-400">
                         {folha.percentualOperacao?.empresa1 ? (
@@ -950,52 +1180,155 @@ export default function FolhaPagamentoPage() {
                     {colunas.includes('statusNF') && folhasFiltradas.some(f => f.colaborador.contrato === 'PJ') && (
                       <td className="py-3 px-4 text-center">{folha.notaFiscal?.status || '-'}</td>
                     )}
-                    <td className="py-3 px-4 text-center sticky right-0 bg-white dark:bg-gray-900 z-10">
-                      <Button variant="outline" onClick={e => { e.stopPropagation(); handleEditarFolha(folha); }}>
-                        <FileText className="w-4 h-4" />
-                      </Button>
+                    <td className="py-3 px-4 text-center sticky right-0 z-30 bg-inherit">
+                      <Tooltip content="Editar">
+                        <span>
+                          <Button
+                            variant="outline"
+                            aria-label={`Editar folha de ${folha.colaborador.nomeCompleto}`}
+                            tabIndex={0}
+                            onClick={e => { e.stopPropagation(); handleEditarFolha(folha); }}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); handleEditarFolha(folha); } }}
+                            className="dark:text-white"
+                          >
+                            <FileText className="w-4 h-4 dark:text-white" />
+                          </Button>
+                        </span>
+                      </Tooltip>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50 dark:bg-gray-800/50">
-                <tr>
-                  <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-900 z-10">TOTAL</td>
-                  {colunas.includes('funcao') && <td className="py-3 px-4"></td>}
-                  {colunas.includes('empresa') && <td className="py-3 px-4"></td>}
-                  {colunas.includes('contrato') && <td className="py-3 px-4"></td>}
-                  {colunas.includes('valor') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(totais.valor)}</td>}
-                  {colunas.includes('adicional') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(totais.adicional)}</td>}
-                  {colunas.includes('reembolso') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(totais.reembolso)}</td>}
-                  {colunas.includes('desconto') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(totais.desconto)}</td>}
-                  {colunas.includes('total') && <td className="py-3 px-4 text-right font-semibold text-indigo-600 dark:text-indigo-400">{formatCurrency(totais.valorTotal)}</td>}
-                  {colunas.includes('valorTotalSemReembolso') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(totais.valorTotal - totais.reembolso)}</td>}
-                  {colunas.includes('empresa1') && <td className="py-3 px-4"></td>}
-                  {colunas.includes('empresa2') && <td className="py-3 px-4"></td>}
+              )}
+              <tfoot>
+                <tr className="bg-[#f9fafb] dark:bg-gray-900">
+                  <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white sticky left-0 bg-[#f9fafb] dark:bg-gray-900 z-30">TOTAL</td>
+                  {colunas.includes('funcao') && <td className="py-3 px-4 bg-[#f9fafb] dark:bg-gray-900"></td>}
+                  {colunas.includes('empresa') && <td className="py-3 px-4 bg-[#f9fafb] dark:bg-gray-900"></td>}
+                  {colunas.includes('contrato') && <td className="py-3 px-4 bg-[#f9fafb] dark:bg-gray-900"></td>}
+                  {colunas.includes('valor') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white min-w-[120px] bg-[#f9fafb] dark:bg-gray-900">{formatCurrency(totais.valor)}</td>}
+                  {colunas.includes('adicional') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white min-w-[120px] bg-[#f9fafb] dark:bg-gray-900">{formatCurrency(totais.adicional)}</td>}
+                  {colunas.includes('reembolso') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white min-w-[120px] bg-[#f9fafb] dark:bg-gray-900">{formatCurrency(totais.reembolso)}</td>}
+                  {colunas.includes('desconto') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white min-w-[120px] bg-[#f9fafb] dark:bg-gray-900">{formatCurrency(totais.desconto)}</td>}
+                  {colunas.includes('total') && <td className="py-3 px-4 text-right font-semibold text-indigo-600 dark:text-indigo-400 min-w-[140px] bg-[#f9fafb] dark:bg-gray-900">{formatCurrency(totais.valorTotal)}</td>}
+                  {colunas.includes('valorTotalSemReembolso') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white min-w-[140px] bg-[#f9fafb] dark:bg-gray-900">{formatCurrency(totais.valorTotal - totais.reembolso)}</td>}
+                  {colunas.includes('empresa1') && <td className="py-3 px-4 bg-[#f9fafb] dark:bg-gray-900"></td>}
+                  {colunas.includes('empresa2') && <td className="py-3 px-4 bg-[#f9fafb] dark:bg-gray-900"></td>}
                   {colunas.includes('empresa3') && <td className="py-3 px-4"></td>}
                   {colunas.includes('empresa4') && <td className="py-3 px-4"></td>}
                   {colunas.includes('situacao') && <td className="py-3 px-4"></td>}
                   {colunas.includes('dataPagamento') && <td className="py-3 px-4"></td>}
                   {colunas.includes('nf') && folhasFiltradas.some(f => f.colaborador.contrato === 'PJ') && <td className="py-3 px-4"></td>}
                   {colunas.includes('statusNF') && folhasFiltradas.some(f => f.colaborador.contrato === 'PJ') && <td className="py-3 px-4"></td>}
-                  <td className="py-3 px-4 sticky right-0 bg-white dark:bg-gray-900 z-10"></td>
+                  <td className="py-3 px-4 sticky right-0 bg-[#f9fafb] dark:bg-gray-900 z-10"></td>
                 </tr>
-                    {/* Modal Personalizar Colunas */}
-                    <PersonalizarColunasModal
-                      isOpen={modalPersonalizar}
-                      onClose={() => setModalPersonalizar(false)}
-                      value={colunas}
-                      onChange={(cols: string[]) => {
-                        setColunas(cols);
-                        localStorage.setItem('folha_colunas', JSON.stringify(cols));
-                      }}
-                      temPJ={folhasFiltradas.some(f => f.colaborador.contrato === 'PJ')}
-                    />
               </tfoot>
             </table>
           </div>
+
+          {/* Controles de Paginação */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 px-4 pb-4">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} registros
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* Primeira página */}
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="dark:text-white"
+                  aria-label="Primeira página"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </Button>
+
+                {/* Página anterior */}
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="dark:text-white"
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+
+                {/* Números das páginas */}
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      // Mostra: primeira, última, atual e adjacentes
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1
+                      );
+                    })
+                    .map((page, idx, arr) => {
+                      // Adiciona "..." entre números não consecutivos
+                      const prevPage = arr[idx - 1];
+                      const showEllipsis = prevPage && page - prevPage > 1;
+                      
+                      return (
+                        <div key={page} className="flex gap-1">
+                          {showEllipsis && (
+                            <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>
+                          )}
+                          <Button
+                            variant={currentPage === page ? "primary" : "outline"}
+                            onClick={() => setCurrentPage(page)}
+                            className={currentPage === page ? "" : "dark:text-white"}
+                            aria-label={`Página ${page}`}
+                            aria-current={currentPage === page ? "page" : undefined}
+                          >
+                            {page}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Próxima página */}
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="dark:text-white"
+                  aria-label="Próxima página"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+
+                {/* Última página */}
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="dark:text-white"
+                  aria-label="Última página"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       )}
+
+      {/* Modal Personalizar Colunas */}
+      <PersonalizarColunasModal
+        isOpen={modalPersonalizar}
+        onClose={() => setModalPersonalizar(false)}
+        value={colunas}
+        onChange={(cols: string[]) => {
+          setColunas(cols);
+          localStorage.setItem('folha_colunas', JSON.stringify(cols));
+        }}
+        temPJ={folhasFiltradas.some(f => f.colaborador.contrato === 'PJ')}
+      />
 
       {/* Modal de Edição */}
       {modalEditarAberto && (

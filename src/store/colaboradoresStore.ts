@@ -48,6 +48,7 @@ interface ColaboradoresState {
   setFiltroStatus: (s: string) => void;
   adicionarColaborador: (dados: Omit<Colaborador, 'id'>) => void;
   atualizarColaborador: (id: number, dados: Partial<Colaborador>) => void;
+  updateAvatarByEmail: (email: string, avatarUrl: string) => void;
   reset: () => void;
 }
 
@@ -76,6 +77,12 @@ export const useColaboradoresStore = create<ColaboradoresState>()(
         set((state) => ({
           colaboradores: state.colaboradores.map((c) =>
             c.id === id ? { ...c, ...dados } : c
+          ),
+        })),
+      updateAvatarByEmail: (email, avatarUrl) =>
+        set((state) => ({
+          colaboradores: state.colaboradores.map((c) =>
+            c.email === email ? { ...c, avatar: avatarUrl } : c
           ),
         })),
       reset: () => set({ colaboradores: mock, busca: '', filtroStatus: 'Todos' }),

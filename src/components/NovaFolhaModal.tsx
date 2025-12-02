@@ -171,9 +171,9 @@ export function NovaFolhaModal({ isOpen, onClose, onSave, periodo }: NovaFolhaMo
               <Avatar src={colaboradorSelecionado.avatar} alt={colaboradorSelecionado.nomeCompleto} size="lg" />
               <div>
                 <div className="font-semibold text-gray-900 dark:text-white">{colaboradorSelecionado.nomeCompleto}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Setor: {colaboradorSelecionado.setor}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Função: {colaboradorSelecionado.funcao}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">Contrato: {colaboradorSelecionado.contrato}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Setor: {colaboradorSelecionado.setor ?? colaboradorSelecionado.departamento ?? '-'}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Função: {colaboradorSelecionado.funcao ?? colaboradorSelecionado.cargo ?? '-'}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Contrato: {colaboradorSelecionado.contrato ?? colaboradorSelecionado.regime ?? '-'}</div>
               </div>
             </div>
           )}

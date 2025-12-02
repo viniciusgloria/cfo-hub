@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight, Filter, XCircle, CheckCircle, Clock } from 'lucide-react';
+import { AlertCircle, Download, BarChart3, TrendingUp, ChevronLeft, ChevronRight, Filter, XCircle, CheckCircle, Clock, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import FilterPill from '../components/ui/FilterPill';
 import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -139,6 +139,20 @@ export function Ponto() {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     return key === mes;
   });
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  const totalRegistros = registrosFiltrados.length;
+  const totalPages = Math.ceil(totalRegistros / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const registrosPaginados = registrosFiltrados.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset pagination quando muda mes ou viewMode
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [mes, viewMode]);
 
   useEffect(() => {
     const parseBRDate = (s: string) => {
@@ -828,7 +842,7 @@ export function Ponto() {
                   </tr>
                 </thead>
                 <tbody>
-                  {registrosFiltrados.map((reg) => {
+                  {registrosPaginados.map((reg) => {
                     const entradaPunch = (reg.punches || []).find((p: any) => p.type === 'entrada');
                     const saidaPunch = ([...(reg.punches || [])].reverse() as any[]).find((p) => p.type === 'saida');
                     const entrada = entradaPunch?.hhmm ?? '--:--';
@@ -893,6 +907,48 @@ export function Ponto() {
                 </tbody>
               </table>
             </div>
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <Card className="mt-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, totalRegistros)} de {totalRegistros} registros
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="dark:text-white" aria-label="Primeira página">
+                      <ChevronsLeft className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1} className="dark:text-white" aria-label="Página anterior">
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <div className="flex gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                        .map((page, idx, arr) => {
+                          const prevPage = arr[idx - 1];
+                          const showEllipsis = prevPage && page - prevPage > 1;
+                          return (
+                            <div key={page} className="flex gap-1">
+                              {showEllipsis && <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>}
+                              <Button variant={currentPage === page ? "primary" : "outline"} onClick={() => setCurrentPage(page)} className={currentPage === page ? "" : "dark:text-white"} aria-label={`Página ${page}`}>
+                                {page}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    <Button variant="outline" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="dark:text-white" aria-label="Próxima página">
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="dark:text-white" aria-label="Última página">
+                      <ChevronsRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
           </>
         )}
       </Card>

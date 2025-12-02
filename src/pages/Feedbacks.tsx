@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { Lock, MessageCircle } from 'lucide-react';
+import { Lock, MessageCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -26,6 +26,11 @@ export function Feedbacks() {
   });
   const [touched, setTouched] = useState({ paraQuem: false, pergunta: false });
 
+  // Estado para paginação
+  const [currentPageRecebidos, setCurrentPageRecebidos] = useState(1);
+  const [currentPageEnviados, setCurrentPageEnviados] = useState(1);
+  const [itemsPerPage] = useState(20);
+
   const { feedbacks, feedbacksEnviados, solicitarFeedback } = useFeedbacksStore();
 
   const tabs = [
@@ -33,6 +38,24 @@ export function Feedbacks() {
     { id: 'enviados', label: 'Enviados', count: feedbacksEnviados.length },
     { id: 'solicitar', label: 'Solicitar' }
   ];
+
+  // Cálculos de paginação para recebidos
+  const totalRecebidos = feedbacks.length;
+  const totalPagesRecebidos = Math.ceil(totalRecebidos / itemsPerPage);
+  const startRecebidos = (currentPageRecebidos - 1) * itemsPerPage;
+  const feedbacksRecebidosPaginados = feedbacks.slice(startRecebidos, startRecebidos + itemsPerPage);
+
+  // Cálculos de paginação para enviados
+  const totalEnviados = feedbacksEnviados.length;
+  const totalPagesEnviados = Math.ceil(totalEnviados / itemsPerPage);
+  const startEnviados = (currentPageEnviados - 1) * itemsPerPage;
+  const feedbacksEnviadosPaginados = feedbacksEnviados.slice(startEnviados, startEnviados + itemsPerPage);
+
+  // Reset para página 1 quando aba muda
+  useEffect(() => {
+    setCurrentPageRecebidos(1);
+    setCurrentPageEnviados(1);
+  }, [activeTab]);
 
   const handleSolicitar = () => {
     const errors: string[] = [];
@@ -97,6 +120,7 @@ export function Feedbacks() {
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'recebidos' && (
+          <>
           <div className="space-y-4">
             {isLoading ? (
               <div className="grid grid-cols-1 gap-4">
@@ -109,7 +133,7 @@ export function Feedbacks() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {feedbacks.map((fb) => (
+                {feedbacksRecebidosPaginados.map((fb) => (
                   <Card
                     key={fb.id}
                     className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
@@ -158,19 +182,63 @@ export function Feedbacks() {
               </div>
             )}
           </div>
+          
+          {/* Paginação Recebidos */}
+          {totalPagesRecebidos > 1 && (
+            <Card className="mt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Mostrando {startRecebidos + 1}-{Math.min(startRecebidos + itemsPerPage, totalRecebidos)} de {totalRecebidos} feedbacks
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setCurrentPageRecebidos(1)} disabled={currentPageRecebidos === 1} className="dark:text-white" aria-label="Primeira página">
+                    <ChevronsLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" onClick={() => setCurrentPageRecebidos(prev => Math.max(1, prev - 1))} disabled={currentPageRecebidos === 1} className="dark:text-white" aria-label="Página anterior">
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPagesRecebidos }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPagesRecebidos || Math.abs(page - currentPageRecebidos) <= 1)
+                      .map((page, idx, arr) => {
+                        const prevPage = arr[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        return (
+                          <div key={page} className="flex gap-1">
+                            {showEllipsis && <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>}
+                            <Button variant={currentPageRecebidos === page ? "primary" : "outline"} onClick={() => setCurrentPageRecebidos(page)} className={currentPageRecebidos === page ? "" : "dark:text-white"} aria-label={`Página ${page}`}>
+                              {page}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <Button variant="outline" onClick={() => setCurrentPageRecebidos(prev => Math.min(totalPagesRecebidos, prev + 1))} disabled={currentPageRecebidos === totalPagesRecebidos} className="dark:text-white" aria-label="Próxima página">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" onClick={() => setCurrentPageRecebidos(totalPagesRecebidos)} disabled={currentPageRecebidos === totalPagesRecebidos} className="dark:text-white" aria-label="Última página">
+                    <ChevronsRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+          </>
         )}
 
         {activeTab === 'enviados' && (
-          <div className="space-y-4">
-            {feedbacksEnviados.length === 0 ? (
-              <Card className="p-12 text-center">
-                <p className="text-gray-600">Você ainda não enviou feedbacks</p>
-                <Button onClick={() => setActiveTab('solicitar')} className="mt-4">
-                  Solicitar Feedback
-                </Button>
-              </Card>
-            ) : (
-              feedbacksEnviados.map((fb) => (
+          <>
+            <div className="space-y-4">
+              {feedbacksEnviados.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <p className="text-gray-600">Você ainda não enviou feedbacks</p>
+                  <Button onClick={() => setActiveTab('solicitar')} className="mt-4">
+                    Solicitar Feedback
+                  </Button>
+                </Card>
+              ) : (
+                feedbacksEnviadosPaginados.map((fb) => (
                 <Card
                   key={fb.id}
                   className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
@@ -205,9 +273,52 @@ export function Feedbacks() {
                     <span>{fb.data}</span>
                   </div>
                 </Card>
-              ))
+                ))
+              )}
+            </div>
+            
+            {/* Paginação Enviados */}
+            {totalPagesEnviados > 1 && (
+            <Card className="mt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Mostrando {startEnviados + 1}-{Math.min(startEnviados + itemsPerPage, totalEnviados)} de {totalEnviados} feedbacks
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setCurrentPageEnviados(1)} disabled={currentPageEnviados === 1} className="dark:text-white" aria-label="Primeira página">
+                    <ChevronsLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" onClick={() => setCurrentPageEnviados(prev => Math.max(1, prev - 1))} disabled={currentPageEnviados === 1} className="dark:text-white" aria-label="Página anterior">
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPagesEnviados }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPagesEnviados || Math.abs(page - currentPageEnviados) <= 1)
+                      .map((page, idx, arr) => {
+                        const prevPage = arr[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        return (
+                          <div key={page} className="flex gap-1">
+                            {showEllipsis && <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>}
+                            <Button variant={currentPageEnviados === page ? "primary" : "outline"} onClick={() => setCurrentPageEnviados(page)} className={currentPageEnviados === page ? "" : "dark:text-white"} aria-label={`Página ${page}`}>
+                              {page}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <Button variant="outline" onClick={() => setCurrentPageEnviados(prev => Math.min(totalPagesEnviados, prev + 1))} disabled={currentPageEnviados === totalPagesEnviados} className="dark:text-white" aria-label="Próxima página">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" onClick={() => setCurrentPageEnviados(totalPagesEnviados)} disabled={currentPageEnviados === totalPagesEnviados} className="dark:text-white" aria-label="Última página">
+                    <ChevronsRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
             )}
-          </div>
+          </>
         )}
 
         {activeTab === 'solicitar' && (
