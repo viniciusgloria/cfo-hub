@@ -15,7 +15,8 @@ import {
   BarChart,
   Calendar,
   Award,
-  DollarSign
+  DollarSign,
+  Receipt
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
@@ -44,6 +45,8 @@ const navItemsGestor: NavItem[] = [
   { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
   { label: 'Desenvolvimento', path: '/okrs', icon: Target },
   { label: 'Folha de Pagamento', path: '/folha-pagamento', icon: DollarSign },
+  { label: 'Folha de Clientes', path: '/folha-clientes', icon: Receipt },
+  { label: 'Listar Colaboradores', path: '/funcionarios-cliente', icon: UserCog },
   { label: 'Relatórios', path: '/relatorios', icon: BarChart },
 ];
 

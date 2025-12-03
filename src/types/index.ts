@@ -4,8 +4,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'gestor' | 'colaborador' | 'rh';
+  role: 'admin' | 'gestor' | 'colaborador' | 'rh' | 'visitante';
   avatar: string;
+  clienteId?: number; // ID do cliente vinculado (para role visitante)
 }
 
 export interface NavItem {
@@ -125,6 +126,130 @@ export interface FolhaPagamento {
   empresa2Valor?: number;
   empresa3Valor?: number;
   empresa4Valor?: number;
+  
+  // Metadados
+  criadoEm: string;
+  atualizadoEm: string;
+  criadoPor?: string;
+  atualizadoPor?: string;
+}
+
+// Tipos para Folha de Clientes (BPO Financeiro)
+export interface ClienteCompleto {
+  id: number;
+  nome: string;
+  cnpj?: string;
+  responsavel: string;
+  email?: string;
+  telefone?: string;
+  status: 'ativo' | 'pausado' | 'encerrado';
+  mrr: number;
+  inicio: string;
+  servicos: string[];
+  setor?: string;
+}
+
+// Funcionário cadastrado pelo cliente para uso na folha de pagamento
+export interface FuncionarioCliente {
+  id: string;
+  clienteId: number; // Cliente ao qual pertence
+  
+  // Dados pessoais
+  nomeCompleto: string;
+  cpf: string;
+  rg?: string;
+  dataNascimento?: string;
+  telefone?: string;
+  email?: string;
+  
+  // Endereço
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  cep?: string;
+  
+  // Dados profissionais
+  funcao: string;
+  setor?: string;
+  dataAdmissao?: string;
+  tipoContrato: 'CLT' | 'PJ';
+  
+  // Dados bancários
+  chavePix?: string;
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  tipoConta?: 'corrente' | 'poupanca';
+  
+  // Dados PJ (se aplicável)
+  cnpj?: string;
+  razaoSocial?: string;
+  
+  // Status
+  status: 'ativo' | 'inativo';
+  
+  // Metadados
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface FolhaCliente {
+  id: string;
+  clienteId: number;
+  cliente: ClienteCompleto;
+  funcionarioId?: string; // ID do funcionário cadastrado pelo cliente
+  periodo: string; // formato: "2025-11"
+  
+  // Campos preenchidos pelo CLIENTE (amarelo)
+  colaborador: string; // nome do colaborador
+  funcao?: string;
+  empresa: string; // empresa responsável pelo pagamento
+  ctt?: string; // centro de custo
+  valor: number;
+  adicional: number;
+  reembolso: number;
+  desconto: number;
+  
+  // Percentual por operação (preenchido pelo cliente)
+  percentualOperacao?: {
+    empresa1?: string;
+    empresa1Percent?: number;
+    empresa1Valor?: number;
+    empresa2?: string;
+    empresa2Percent?: number;
+    empresa2Valor?: number;
+    empresa3?: string;
+    empresa3Percent?: number;
+    empresa3Valor?: number;
+    empresa4?: string;
+    empresa4Percent?: number;
+    empresa4Valor?: number;
+    totalOpers?: number;
+  };
+  
+  // Campos preenchidos pela CFO (verde)
+  valorTotal: number; // calculado
+  valorTotalSemReembolso: number; // calculado
+  situacao: 'pendente' | 'agendado' | 'pago' | 'cancelado';
+  dataPagamento?: string;
+  
+  // Nota fiscal
+  notaFiscal?: {
+    numero?: string;
+    status: 'aguardando' | 'recebida' | 'pendente';
+    pagamento: 'pendente' | 'agendado' | 'pago';
+    data?: string;
+    obs?: string;
+  };
+  
+  // Informações adicionais CFO
+  responsavelSetor?: string; // quem da CFO está cuidando
+  statusOmie?: 'pendente' | 'enviado' | 'sincronizado' | 'erro';
+  dataEnvioOmie?: string;
+  codigoOmie?: string;
+  obs?: string;
   
   // Metadados
   criadoEm: string;

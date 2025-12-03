@@ -19,6 +19,8 @@ import { Calendario } from './pages/Calendario';
 import { Chat } from './pages/Chat';
 import { Avaliacoes } from './pages/Avaliacoes';
 import FolhaPagamento from './pages/FolhaPagamento';
+import FolhaClientes from './pages/FolhaClientes';
+import FuncionariosCliente from './pages/FuncionariosCliente';
 import { NavigationProgress } from './components/ui/NavigationProgress';
 import { GuidedTour } from './components/GuidedTour';
 import { useThemeStore } from './store/themeStore';
@@ -65,6 +67,8 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/avaliacoes" element={<Avaliacoes />} />
           <Route path="/folha-pagamento" element={<FolhaPagamento />} />
+          <Route path="/folha-clientes" element={<FolhaClientes />} />
+          <Route path="/funcionarios-cliente" element={<FuncionariosCliente />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

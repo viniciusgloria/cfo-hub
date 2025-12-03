@@ -157,16 +157,32 @@ Empresas 10-50 pessoas precisam:
 ### 3.2 V1.5 - CFO Company Exclusivo (4 semanas)
 **Funcionalidade especial para uso interno**
 
-#### Módulo BPO Financeiro
-- [ ] Tela "Lançamentos Clientes"
-- [ ] Listar contas a pagar/receber por cliente
-- [ ] Filtros: Cliente, Status, Vencimento
-- [ ] Criar lançamento manual
-- [ ] Editar lançamento existente
-- [ ] Excluir lançamento (com confirmação)
-- [ ] Sync bidirecional OMIE
-- [ ] Permissão: apenas setor BPO
+#### Módulo BPO Financeiro - Folha de Clientes
+- [x] Tela "Folha de Clientes" implementada
+- [x] Listagem de lançamentos de folha de pagamento dos clientes
+- [x] Campos do cliente: Colaborador, Função, Empresa, CTT, Valor, Adicional, Reembolso, Desconto
+- [x] Campos da CFO: Valor Total, Situação, Data Pagamento, Nota Fiscal, Status OMIE
+- [x] Percentual por operação (divisão entre empresas/centros de custo)
+- [x] Filtros: Cliente, Situação (Pendente/Agendado/Pago/Cancelado), Status OMIE
+- [x] Busca por colaborador, cliente ou função
+- [x] Paginação (20 itens por página)
+- [x] Estatísticas: Total de lançamentos, Valor total, Pendentes, Pagos
+- [x] Exportação para Excel/CSV
+- [x] Download de modelo (planilha template)
+- [x] Importação de planilhas Excel/CSV (estrutura preparada)
+- [x] Sincronização com OMIE (simulada via API mock)
+- [x] Envio individual para OMIE
+- [x] Store Zustand com persistência localStorage
+- [x] Tipos TypeScript completos
+- [ ] Modal de criação de nova folha
+- [ ] Modal de edição de folha existente
+- [ ] Preview de importação com validação
+- [ ] Integração real com API OMIE
+- [ ] Permissão por setor BPO
 - [ ] Auditoria completa (quem/quando/o quê)
+- [ ] Agendamento de pagamentos via fintech
+
+**Contexto:** Esta funcionalidade automatiza o processo atual que usa Google Sheets/Excel. O cliente preenche dados em amarelo (colaborador, valores, percentuais), a equipe BPO da CFO preenche em verde (situação, nota fiscal, dados pagamento). Lançamentos podem ser enviados para OMIE via API. Agendamentos futuros dependerão de integração com fintech.
 
 **Nota:** Esta funcionalidade NÃO estará na versão comercial (go-to-market). É exclusiva para operação interna da CFO Company.
 
