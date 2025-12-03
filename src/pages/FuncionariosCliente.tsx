@@ -47,8 +47,7 @@ export default function FuncionariosClientePage() {
     ? user.clienteId 
     : (clientes.find(c => c.status === 'ativo')?.id || 1);
 
-  const cliente = clientes.find(c => c.id === clienteId);
-  const isVisitante = user?.role === 'visitante';
+  // cliente and isVisitante are intentionally not needed here
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 500);
