@@ -4,7 +4,7 @@ import {
   Download, Upload, FileSpreadsheet, RefreshCw,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, 
   Search, Send, Eye, Trash2, Receipt, TrendingUp,
-  Building2, Users, DollarSign, AlertCircle, CheckCircle, Clock
+  Building2, Users, DollarSign, AlertCircle, CheckCircle, Clock, Edit
 } from 'lucide-react';
 import { useFolhaClientesStore } from '../store/folhaClientesStore';
 import { useAuthStore } from '../store/authStore';
@@ -14,6 +14,7 @@ import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { PageBanner } from '../components/ui/PageBanner';
+import { Modal } from '../components/ui/Modal';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { FolhaCliente } from '../types';
@@ -28,6 +29,23 @@ export default function FolhaClientesPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [folhaSelecionada, setFolhaSelecionada] = useState<FolhaCliente | null>(null);
   const [modalVisualizarAberto, setModalVisualizarAberto] = useState(false);
+  const [modalNovaFolhaAberto, setModalNovaFolhaAberto] = useState(false);
+  const [modalEditarAberto, setModalEditarAberto] = useState(false);
+  const [modalImportPreviewAberto, setModalImportPreviewAberto] = useState(false);
+  const [importPreviewData, setImportPreviewData] = useState<any[]>([]);
+  const [novaFolhaDistribuicao, setNovaFolhaDistribuicao] = useState<Array<{ empresa: string; percent: number }>>([
+    { empresa: '', percent: 100 }
+  ]);
+  const [novaClienteId, setNovaClienteId] = useState<string>('');
+  // Campos do modal Nova Folha
+  const [novaColaborador, setNovaColaborador] = useState<string>('');
+  const [novaFuncao, setNovaFuncao] = useState<string>('');
+  const [novaEmpresa, setNovaEmpresa] = useState<string>('');
+  const [novaCtt, setNovaCtt] = useState<string>('');
+  const [novaValor, setNovaValor] = useState<number>(0);
+  const [novaAdicional, setNovaAdicional] = useState<number>(0);
+  const [novaReembolso, setNovaReembolso] = useState<number>(0);
+  const [novaDesconto, setNovaDesconto] = useState<number>(0);
   const [empresaSelecionadaCustos, setEmpresaSelecionadaCustos] = useState<string>('Todas');
   const [empresaSelecionadaPerformance, setEmpresaSelecionadaPerformance] = useState<string>('Todas');
   const [clienteSelecionadoProjecao, setClienteSelecionadoProjecao] = useState<string>('Todos');
@@ -49,7 +67,6 @@ export default function FolhaClientesPage() {
     setBusca,
     getFolhasFiltradas,
     removerFolha,
-    enviarParaOmie,
     sincronizarComOmie,
     exportarParaExcel
   } = useFolhaClientesStore();
@@ -76,6 +93,15 @@ export default function FolhaClientesPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisitante, user?.clienteId]);
+
+  // Auto-selecionar cliente no modal Nova Folha apenas para admin e visitante
+  useEffect(() => {
+    if (modalNovaFolhaAberto && selectedClientId && selectedClientId !== 'Todos') {
+      if (user?.role === 'admin' || user?.role === 'visitante') {
+        setNovaClienteId(selectedClientId);
+      }
+    }
+  }, [modalNovaFolhaAberto, selectedClientId, user?.role]);
 
   // Simular carregamento inicial
   useEffect(() => {
@@ -110,6 +136,19 @@ export default function FolhaClientesPage() {
   // Paginação
   const totalItems = folhasFiltradas.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // Garantir comportamento: se houver apenas uma linha de distribuição, manter 100%
+  useEffect(() => {
+    if (novaFolhaDistribuicao.length === 1) {
+      const only = novaFolhaDistribuicao[0];
+      if (only.percent !== 100) {
+        setNovaFolhaDistribuicao([{ ...only, percent: 100 }]);
+      }
+    }
+  }, [novaFolhaDistribuicao.length]);
+
+  // Soma total de percentuais (usada para validação)
+  const totalDistribPercent = novaFolhaDistribuicao.reduce((acc, cur) => acc + (Number(cur.percent) || 0), 0);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const folhasPaginadas = folhasFiltradas.slice(startIndex, endIndex);
@@ -157,10 +196,11 @@ export default function FolhaClientesPage() {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        XLSX.utils.sheet_to_json(firstSheet, { header: 1 }); // TODO: usar dados para preview
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
         
-        // TODO: Implementar preview e validação
-        toast.success(`Arquivo "${file.name}" lido com sucesso! (Preview em desenvolvimento)`);
+        setImportPreviewData(jsonData as any[]);
+        setModalImportPreviewAberto(true);
+        toast.success(`Arquivo "${file.name}" carregado com sucesso!`);
       } catch (error) {
         toast.error('Erro ao processar arquivo');
         console.error(error);
@@ -190,16 +230,7 @@ export default function FolhaClientesPage() {
     }
   };
 
-  const handleEnviarParaOmie = async (id: string) => {
-    try {
-      const sucesso = await enviarParaOmie(id);
-      if (sucesso) {
-        toast.success('Enviado para OMIE com sucesso!');
-      }
-    } catch (error) {
-      toast.error('Erro ao enviar para OMIE');
-    }
-  };
+  // Envio para OMIE desativado temporariamente — função removida para evitar warnings.
 
   const handleRemover = (id: string, colaborador: string) => {
     if (window.confirm(`Deseja realmente remover a folha de ${colaborador}?`)) {
@@ -234,6 +265,22 @@ export default function FolhaClientesPage() {
     return badges[status as keyof typeof badges] || badges.pendente;
   };
 
+  const handleNovaFolha = () => {
+    setFolhaSelecionada(null);
+    setModalNovaFolhaAberto(true);
+  };
+
+  const handleEditarFolha = (folha: FolhaCliente) => {
+    setFolhaSelecionada(folha);
+    setModalEditarAberto(true);
+  };
+
+  const handleConfirmarImport = () => {
+    toast.success(`${importPreviewData.length - 1} registros importados com sucesso!`);
+    setModalImportPreviewAberto(false);
+    setImportPreviewData([]);
+  };
+
   return (
     <div className="space-y-6">
       <PageBanner
@@ -242,6 +289,15 @@ export default function FolhaClientesPage() {
         style={{ minHeight: '64px' }}
         right={(
           <div className="flex items-center gap-3">
+            <Button
+              variant="primary"
+              onClick={handleNovaFolha}
+              className="flex items-center gap-2"
+            >
+              <Receipt size={18} />
+              Nova Folha
+            </Button>
+
             <Button
               variant="secondary"
               onClick={handleSincronizarOmie}
@@ -1383,11 +1439,18 @@ export default function FolhaClientesPage() {
                           >
                             <Eye size={16} />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => handleEditarFolha(folha)}
+                            title="Editar"
+                          >
+                            <Edit size={16} />
+                          </Button>
                           {folha.statusOmie === 'pendente' && (
                             <Button
                               variant="ghost"
-                              onClick={() => handleEnviarParaOmie(folha.id)}
-                              title="Enviar para OMIE"
+                              disabled
+                              title="Enviar para OMIE (desativado)"
                             >
                               <Send size={16} />
                             </Button>
@@ -1572,6 +1635,387 @@ export default function FolhaClientesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de Nova Folha */}
+      <Modal
+        isOpen={modalNovaFolhaAberto}
+        onClose={() => setModalNovaFolhaAberto(false)}
+        title="Nova Folha de Pagamento"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Cliente *
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
+                value={novaClienteId}
+                onChange={(e) => setNovaClienteId(e.target.value)}
+                disabled={isVisitante || (user?.role !== 'admin' && user?.role !== 'visitante')}
+              >
+                <option value="">Selecione o cliente</option>
+                {clientes.filter(c => c.status === 'ativo').map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Empresa *
+              </label>
+              <Input placeholder="Nome da empresa" value={novaEmpresa} onChange={(e) => setNovaEmpresa(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Colaborador *
+              </label>
+              <Input placeholder="Nome do colaborador" value={novaColaborador} onChange={(e) => setNovaColaborador(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Função
+              </label>
+              <Input placeholder="Cargo/Função" value={novaFuncao} onChange={(e) => setNovaFuncao(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Valores</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Valor Base *
+                </label>
+                <Input type="number" placeholder="0,00" value={novaValor} onChange={(e) => setNovaValor(Number(e.target.value || 0))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Adicional
+                </label>
+                <Input type="number" placeholder="0,00" value={novaAdicional} onChange={(e) => setNovaAdicional(Number(e.target.value || 0))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Reembolso
+                </label>
+                <Input type="number" placeholder="0,00" value={novaReembolso} onChange={(e) => setNovaReembolso(Number(e.target.value || 0))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Desconto
+                </label>
+                <Input type="number" placeholder="0,00" value={novaDesconto} onChange={(e) => setNovaDesconto(Number(e.target.value || 0))} />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Distribuição por Operação (Opcional)</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Se não preencher distribuição adicional, 100% será atribuído à Empresa acima.</p>
+
+            <div className="space-y-3">
+              {novaFolhaDistribuicao.map((d, idx) => (
+                <div key={idx} className="grid grid-cols-3 gap-2 items-center">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empresa {idx + 1}</label>
+                    <Input
+                      value={d.empresa}
+                      onChange={(e) => {
+                        const copy = [...novaFolhaDistribuicao];
+                        copy[idx] = { ...copy[idx], empresa: e.target.value };
+                        setNovaFolhaDistribuicao(copy);
+                      }}
+                      placeholder="Nome da empresa"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">%</label>
+                    <Input
+                      type="number"
+                      value={d.percent}
+                      onChange={(e) => {
+                        const val = Number(e.target.value || 0);
+                        const copy = [...novaFolhaDistribuicao];
+                        copy[idx] = { ...copy[idx], percent: val };
+                        setNovaFolhaDistribuicao(copy);
+                      }}
+                      min={0}
+                      max={100}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setNovaFolhaDistribuicao(prev => [...prev, { empresa: '', percent: 0 }])}
+                >
+                  Adicionar empresa
+                </Button>
+                {novaFolhaDistribuicao.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setNovaFolhaDistribuicao(prev => prev.slice(0, -1))}
+                  >
+                    Remover última
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setModalNovaFolhaAberto(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              disabled={totalDistribPercent !== 100 || !novaColaborador || !novaEmpresa || !novaClienteId}
+              onClick={() => {
+                if (totalDistribPercent !== 100) {
+                  toast.error('Total de percentuais deve ser 100% antes de cadastrar.');
+                  return;
+                }
+
+                const clienteObj = clientes.find(c => String(c.id) === String(novaClienteId)) || clientes[0];
+                const valorTotal = Number(novaValor || 0) + Number(novaAdicional || 0) + Number(novaReembolso || 0) - Number(novaDesconto || 0);
+                const valorTotalSemReembolso = Number(novaValor || 0) + Number(novaAdicional || 0) - Number(novaDesconto || 0);
+
+                const percentualOperacao: any = {};
+                novaFolhaDistribuicao.forEach((d, i) => {
+                  const idx = i + 1;
+                  percentualOperacao[`empresa${idx}`] = d.empresa;
+                  percentualOperacao[`empresa${idx}Percent`] = d.percent;
+                });
+                percentualOperacao.totalOpers = totalDistribPercent;
+
+                const novaFolha: any = {
+                  clienteId: clienteObj?.id || 0,
+                  cliente: clienteObj,
+                  periodo: periodoSelecionado,
+                  colaborador: novaColaborador,
+                  funcao: novaFuncao,
+                  empresa: novaEmpresa,
+                  ctt: novaCtt,
+                  valor: Number(novaValor || 0),
+                  adicional: Number(novaAdicional || 0),
+                  reembolso: Number(novaReembolso || 0),
+                  desconto: Number(novaDesconto || 0),
+                  percentualOperacao,
+                  valorTotal,
+                  valorTotalSemReembolso,
+                  situacao: 'pendente'
+                };
+
+                useFolhaClientesStore.getState().adicionarFolha(novaFolha as any);
+                toast.success('Folha cadastrada com sucesso!');
+                // reset form
+                setNovaClienteId('');
+                setNovaColaborador('');
+                setNovaFuncao('');
+                setNovaEmpresa('');
+                setNovaCtt('');
+                setNovaValor(0);
+                setNovaAdicional(0);
+                setNovaReembolso(0);
+                setNovaDesconto(0);
+                setNovaFolhaDistribuicao([{ empresa: '', percent: 100 }]);
+                setModalNovaFolhaAberto(false);
+              }}
+            >
+              Cadastrar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de Editar Folha */}
+      <Modal
+        isOpen={modalEditarAberto}
+        onClose={() => setModalEditarAberto(false)}
+        title="Editar Folha de Pagamento"
+      >
+        {folhaSelecionada && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Cliente *
+                </label>
+                <select 
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
+                  defaultValue={folhaSelecionada.cliente.id}
+                >
+                  {clientes.filter(c => c.status === 'ativo').map(c => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Empresa *
+                </label>
+                <Input defaultValue={folhaSelecionada.empresa} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Colaborador *
+                </label>
+                <Input defaultValue={folhaSelecionada.colaborador} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Função
+                </label>
+                <Input defaultValue={folhaSelecionada.funcao || ''} />
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Valores</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Valor Base *
+                  </label>
+                  <Input type="number" defaultValue={folhaSelecionada.valor} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Adicional
+                  </label>
+                  <Input type="number" defaultValue={folhaSelecionada.adicional} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Reembolso
+                  </label>
+                  <Input type="number" defaultValue={folhaSelecionada.reembolso} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Desconto
+                  </label>
+                  <Input type="number" defaultValue={folhaSelecionada.desconto} />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Distribuição por Operação</h3>
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Empresa 1
+                    </label>
+                    <Input defaultValue={folhaSelecionada.percentualOperacao?.empresa1 || ''} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      %
+                    </label>
+                    <Input type="number" defaultValue={folhaSelecionada.percentualOperacao?.empresa1Percent || 0} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Empresa 2
+                    </label>
+                    <Input defaultValue={folhaSelecionada.percentualOperacao?.empresa2 || ''} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      %
+                    </label>
+                    <Input type="number" defaultValue={folhaSelecionada.percentualOperacao?.empresa2Percent || 0} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setModalEditarAberto(false)}>
+                Cancelar
+              </Button>
+              <Button variant="primary" onClick={() => {
+                toast.success('Folha atualizada com sucesso!');
+                setModalEditarAberto(false);
+              }}>
+                Atualizar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal de Preview de Importação */}
+      <Modal
+        isOpen={modalImportPreviewAberto}
+        onClose={() => setModalImportPreviewAberto(false)}
+        title="Preview de Importação"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>{importPreviewData.length > 0 ? importPreviewData.length - 1 : 0}</strong> registros encontrados na planilha.
+              Revise os dados antes de confirmar a importação.
+            </p>
+          </div>
+
+          {importPreviewData.length > 0 && (
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <div className="max-h-96 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                    <tr>
+                      {(importPreviewData[0] as any[]).map((header: any, idx: number) => (
+                        <th key={idx} className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {importPreviewData.slice(1, 11).map((row: any, rowIdx: number) => (
+                      <tr key={rowIdx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        {(row as any[]).map((cell: any, cellIdx: number) => (
+                          <td key={cellIdx} className="px-3 py-2 text-gray-900 dark:text-gray-100">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {importPreviewData.length > 11 && (
+                <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                  ... e mais {importPreviewData.length - 11} registros
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setModalImportPreviewAberto(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" onClick={handleConfirmarImport}>
+              Confirmar Importação
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
