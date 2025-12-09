@@ -108,3 +108,30 @@ export function validatePhone(phone: string): boolean {
   const nums = onlyDigits(phone);
   return nums.length === 10 || nums.length === 11;
 }
+
+// Fetch address data from ViaCEP API
+export async function fetchAddressByCEP(cep: string): Promise<any> {
+  try {
+    const cleanCep = onlyDigits(cep);
+    if (cleanCep.length !== 8) {
+      return null;
+    }
+    
+    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Check if CEP was found (ViaCEP returns {erro: true} if not found)
+    if (data.erro) {
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching address from ViaCEP:', error);
+    return null;
+  }
+}

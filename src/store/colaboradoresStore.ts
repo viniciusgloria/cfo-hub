@@ -10,8 +10,14 @@ export interface Colaborador {
   email: string;
   telefone?: string;
   avatar?: string;
-  status: 'ativo' | 'afastado' | 'ferias';
+  status: 'ativo' | 'afastado' | 'ferias' | 'em_contratacao';
   metaHorasMensais?: number; // Meta de horas por mês (padrão 176h)
+  dispensaDocumentacao?: boolean; // Permite ativar sem documentos (casos atípicos)
+  
+  // Configuração de jornada personalizada
+  jornadaInicio?: string; // Horário de início (ex: '09:00')
+  jornadaFim?: string; // Horário de fim (ex: '18:00')
+  jornadaIntervalo?: string; // Duração do intervalo (ex: '01:00')
   
   // Campos extras para integração com folha de pagamento
   nomeCompleto?: string;
@@ -35,6 +41,7 @@ export interface Colaborador {
   agencia?: string;
   conta?: string;
   operacao?: string;
+  tipoConta?: 'corrente' | 'poupanca';
   cnpj?: string;
   razaoSocial?: string;
   obs?: string;
@@ -49,6 +56,8 @@ interface ColaboradoresState {
   adicionarColaborador: (dados: Omit<Colaborador, 'id'>) => void;
   atualizarColaborador: (id: number, dados: Partial<Colaborador>) => void;
   updateAvatarByEmail: (email: string, avatarUrl: string) => void;
+  podeAtivarColaborador: (id: number) => { pode: boolean; motivo?: string };
+  enviarEmailBoasVindas: (id: number) => void;
   reset: () => void;
 }
 
@@ -85,6 +94,82 @@ export const useColaboradoresStore = create<ColaboradoresState>()(
             c.email === email ? { ...c, avatar: avatarUrl } : c
           ),
         })),
+      
+      podeAtivarColaborador: (id) => {
+        // Importar dinamicamente o documentosStore para evitar dependência circular
+        const { useDocumentosStore } = require('./documentosStore');
+        const store = useDocumentosStore.getState();
+        
+        const state = useColaboradoresStore.getState();
+        const colaborador = state.colaboradores.find(c => c.id === id);
+        
+        // Se colaborador tem dispensa de documentação, pode ativar
+        if (colaborador?.dispensaDocumentacao) {
+          return { pode: true };
+        }
+        
+        const progresso = store.getProgressoDocumentos(id);
+        const docsObrigatorios = store.getDocumentosObrigatorios(colaborador?.cargo || 'default');
+        
+        if (progresso.aprovados < docsObrigatorios.length) {
+          return {
+            pode: false,
+            motivo: `Faltam ${docsObrigatorios.length - progresso.aprovados} documento(s) obrigatório(s) aprovado(s)`
+          };
+        }
+        
+        if (progresso.pendentes > 0) {
+          return {
+            pode: false,
+            motivo: `Existem ${progresso.pendentes} documento(s) pendente(s) de aprovação`
+          };
+        }
+        
+        return { pode: true };
+      },
+
+      enviarEmailBoasVindas: (id) => {
+        const { toast } = require('react-hot-toast');
+        const { useDocumentosStore } = require('./documentosStore');
+        
+        set((state) => {
+          const colaborador = state.colaboradores.find(c => c.id === id);
+          
+          if (!colaborador) {
+            toast.error('Colaborador não encontrado');
+            return state;
+          }
+
+          // Simula envio de email (backend real necessário)
+          const docsStore = useDocumentosStore.getState();
+          const docsObrigatorios = docsStore.getDocumentosObrigatorios(colaborador.cargo);
+          
+          console.log(`
+            📧 Email de Boas-Vindas Enviado para ${colaborador.email}
+            
+            Olá ${colaborador.nome},
+            
+            Bem-vindo(a) à CenterFlow!
+            
+            Credenciais de Acesso:
+            - Email: ${colaborador.email}
+            - Senha temporária: Cfo@2024
+            
+            Link de acesso: https://cfo-hub.com/login
+            
+            Por favor, faça upload dos seguintes documentos obrigatórios:
+            ${docsObrigatorios.map(doc => `- ${doc}`).join('\n')}
+            
+            Atenciosamente,
+            Equipe CenterFlow
+          `);
+          
+          toast.success(`Email de boas-vindas enviado para ${colaborador.email}!`);
+          
+          return state;
+        });
+      },
+
       reset: () => set({ colaboradores: mock, busca: '', filtroStatus: 'Todos' }),
     }),
     { name: 'cfo:colaboradores', partialize: (s) => ({ colaboradores: s.colaboradores }) }

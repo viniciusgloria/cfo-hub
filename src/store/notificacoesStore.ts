@@ -12,7 +12,11 @@ export type TipoNotificacao =
   | 'okr_atualizado'
   | 'reserva_sala_proxima'
   | 'aniversario'
-  | 'aviso_sistema';
+  | 'aviso_sistema'
+  | 'documento_aprovado'
+  | 'documento_rejeitado'
+  | 'documento_enviado'
+  | 'documento_pendente_gestor';
 
 export interface Notificacao {
   id: string;
@@ -24,6 +28,7 @@ export interface Notificacao {
   link?: string; // URL para redirecionar ao clicar
   icone?: string; // Nome do ícone lucide
   cor?: string; // Cor do ícone
+  destinatarioId?: string; // ID do colaborador que deve receber (undefined = todos)
 }
 
 interface NotificacoesState {
@@ -33,6 +38,10 @@ interface NotificacoesState {
   marcarTodasComoLidas: () => void;
   removerNotificacao: (id: string) => void;
   getNotificacoesNaoLidas: () => Notificacao[];
+  getNotificacoesPorUsuario: (usuarioId: string) => Notificacao[];
+  notificarDocumentoAprovado: (colaboradorId: string, documentoNome: string) => void;
+  notificarDocumentoRejeitado: (colaboradorId: string, documentoNome: string, motivo: string) => void;
+  notificarDocumentoEnviado: (gestoresIds: string[], colaboradorNome: string, documentoTipo: string) => void;
   reset: () => void;
 }
 
@@ -112,6 +121,69 @@ export const useNotificacoesStore = create<NotificacoesState>()(
 
       getNotificacoesNaoLidas: () => {
         return get().notificacoes.filter((n) => !n.lida);
+      },
+
+      getNotificacoesPorUsuario: (usuarioId) => {
+        return get().notificacoes.filter(
+          (n) => !n.destinatarioId || n.destinatarioId === usuarioId
+        );
+      },
+
+      notificarDocumentoAprovado: (colaboradorId, documentoNome) => {
+        const nova: Notificacao = {
+          tipo: 'documento_aprovado',
+          titulo: 'Documento Aprovado',
+          mensagem: `Seu documento "${documentoNome}" foi aprovado!`,
+          link: '/documentos',
+          icone: 'CheckCircle',
+          cor: 'text-green-600',
+          destinatarioId: colaboradorId,
+          id: Date.now().toString(),
+          criadoEm: new Date().toISOString(),
+          lida: false,
+        };
+
+        set((state) => ({
+          notificacoes: [nova, ...state.notificacoes],
+        }));
+      },
+
+      notificarDocumentoRejeitado: (colaboradorId, documentoNome, motivo) => {
+        const nova: Notificacao = {
+          tipo: 'documento_rejeitado',
+          titulo: 'Documento Rejeitado',
+          mensagem: `Seu documento "${documentoNome}" foi rejeitado. Motivo: ${motivo}`,
+          link: '/documentos',
+          icone: 'XCircle',
+          cor: 'text-red-600',
+          destinatarioId: colaboradorId,
+          id: Date.now().toString(),
+          criadoEm: new Date().toISOString(),
+          lida: false,
+        };
+
+        set((state) => ({
+          notificacoes: [nova, ...state.notificacoes],
+        }));
+      },
+
+      notificarDocumentoEnviado: (gestoresIds, colaboradorNome, documentoTipo) => {
+        const novasNotificacoes: Notificacao[] = gestoresIds.map((gestorId) => ({
+          tipo: 'documento_pendente_gestor' as TipoNotificacao,
+          titulo: 'Novo Documento Pendente',
+          mensagem: `${colaboradorNome} enviou um documento do tipo "${documentoTipo}" para aprovação.`,
+          link: '/documentos',
+          icone: 'Clock',
+          cor: 'text-yellow-600',
+          destinatarioId: gestorId,
+          id: `${Date.now()}-${gestorId}`,
+          criadoEm: new Date().toISOString(),
+          lida: false,
+        }));
+
+        set((state) => ({
+          notificacoes: [...novasNotificacoes, ...state.notificacoes],
+        }));
       },
 
       reset: () => set({ notificacoes: mockNotificacoes }),

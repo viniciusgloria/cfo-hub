@@ -200,21 +200,66 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
           
           const novasFolhas: FolhaPagamento[] = colaboradores
             .filter((c) => c.situacao === 'ativo')
-            .map((colab) => ({
-              id: `fp-${periodo}-${colab.id}`,
-              colaboradorId: colab.id,
-              colaborador: colab,
-              periodo,
-              valor: 0,
-              adicional: 0,
-              reembolso: 0,
-              desconto: 0,
-              valorTotal: 0,
-              situacao: 'pendente',
-              valorTotalSemReembolso: 0,
-              criadoEm: new Date().toISOString(),
-              atualizadoEm: new Date().toISOString(),
-            }));
+            .map((colab) => {
+              // Garantir que a folha receba empresa e setor a partir do cadastro
+              const empresa = (colab as any).empresa || (colab as any).empresa || '';
+              const setor = (colab as any).setor || (colab as any).departamento || '';
+
+              const colaboradorMapped: ColaboradorCompleto = {
+                // preserve as much as possible; coerce keys we rely on
+                id: (colab as any).id,
+                nomeCompleto: (colab as any).nomeCompleto || (colab as any).nome || '',
+                cpf: (colab as any).cpf || '',
+                telefone: (colab as any).telefone,
+                email: (colab as any).email,
+                dataNascimento: (colab as any).dataNascimento,
+                endereco: (colab as any).endereco,
+                numero: (colab as any).numero,
+                complemento: (colab as any).complemento,
+                bairro: (colab as any).bairro,
+                cidade: (colab as any).cidade,
+                cep: (colab as any).cep,
+                setor: setor,
+                funcao: (colab as any).funcao || (colab as any).cargo || '',
+                empresa: empresa,
+                regime: (colab as any).regime || 'CLT',
+                contrato: (colab as any).contrato || 'CLT',
+                situacao: (colab as any).situacao || 'ativo',
+                chavePix: (colab as any).chavePix,
+                banco: (colab as any).banco,
+                codigoBanco: (colab as any).codigoBanco,
+                agencia: (colab as any).agencia,
+                conta: (colab as any).conta,
+                operacao: (colab as any).operacao,
+                cnpj: (colab as any).cnpj,
+                razaoSocial: (colab as any).razaoSocial,
+                tipo: (colab as any).tipo,
+                enderecoEmpresa: (colab as any).enderecoEmpresa,
+                numeroEmpresa: (colab as any).numeroEmpresa,
+                complementoEmpresa: (colab as any).complementoEmpresa,
+                cepEmpresa: (colab as any).cepEmpresa,
+                bairroEmpresa: (colab as any).bairroEmpresa,
+                cidadeEmpresa: (colab as any).cidadeEmpresa,
+                avatar: (colab as any).avatar,
+                obs: (colab as any).obs,
+              };
+
+              return {
+                id: `fp-${periodo}-${colab.id}`,
+                colaboradorId: colab.id,
+                colaborador: colaboradorMapped,
+                periodo,
+                valor: 0,
+                adicional: 0,
+                reembolso: 0,
+                desconto: 0,
+                valorTotal: 0,
+                situacao: 'pendente',
+                valorTotalSemReembolso: 0,
+                criadoEm: new Date().toISOString(),
+                atualizadoEm: new Date().toISOString(),
+              };
+            });
           
           return { folhas: [...state.folhas, ...novasFolhas] };
         }),

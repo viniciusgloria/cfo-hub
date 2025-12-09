@@ -16,7 +16,9 @@ const mockUser: User = {
   name: 'João Silva',
   email: 'joao@cfocompany.com',
   role: 'admin',
-  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Joao'
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Joao',
+  cargoId: '3', // Gerente de Projetos
+  setorId: '1', // Tecnologia
 };
 
 export const useAuthStore = create<AuthState>()(

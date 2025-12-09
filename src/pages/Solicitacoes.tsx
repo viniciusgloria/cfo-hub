@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, XCircle, AlertCircle, User, Mail, ClipboardCheck } from 'lucide-react';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
@@ -14,6 +14,12 @@ import { Avatar } from '../components/Avatar';
 import { useSolicitacoesStore } from '../store/solicitacoesStore';
 import { useAuthStore } from '../store/authStore';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
+import { useColaboradoresStore } from '../store/colaboradoresStore';
+import { useDocumentosStore } from '../store/documentosStore';
+import { useAjustesPontoStore } from '../store/ajustesPontoStore';
+import { ApprovarSolicitacaoModal } from '../components/ApprovarSolicitacaoModal';
+import { usePontoStore } from '../store/pontoStore';
+import { useNotificacoesStore } from '../store/notificacoesStore';
 
 const tiposMap: Record<string, { label: string; badge: string }> = {
   material: { label: 'Material', badge: 'material' },
@@ -35,6 +41,13 @@ export function Solicitacoes() {
   const [detalhesId, setDetalhesId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ tipo: 'material', titulo: '', descricao: '', urgencia: 'media' });
   const [touched, setTouched] = useState({ titulo: false, descricao: false });
+  
+  // Estados para aprovação de ponto
+  const [approvarPontoOpen, setApprovarPontoOpen] = useState(false);
+  const [actionPontoId, setActionPontoId] = useState<string | null>(null);
+  const [actionPontoType, setActionPontoType] = useState<'aprovar' | 'rejeitar'>('aprovar');
+  const [confirmPontoOpen, setConfirmPontoOpen] = useState(false);
+  const [selectedPontoIds, setSelectedPontoIds] = useState<string[]>([]);
 
   // Estado para paginação
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,16 +55,49 @@ export function Solicitacoes() {
 
   const { solicitacoes, adicionarSolicitacao, atualizarStatus } = useSolicitacoesStore();
   const user = useAuthStore((state) => state.user);
+  const { colaboradores, atualizarColaborador, enviarEmailBoasVindas } = useColaboradoresStore();
+  const { documentos, getDocumentosObrigatorios, getProgressoDocumentos, aprovarDocumento, rejeitarDocumento, criarPastasDeTemplate } = useDocumentosStore();
+  const { solicitacoes: solicitacoesPonto, atualizarStatus: atualizarStatusPonto } = useAjustesPontoStore();
+  const { aplicarAjusteAprovado } = usePontoStore();
+  const { adicionarNotificacao } = useNotificacoesStore();
+
+  const isGestor = user?.role === 'gestor' || user?.role === 'admin';
+  const isAprovador = user?.role === 'admin' || user?.role === 'gestor' || user?.role === 'rh';
+
+  // Colaboradores em contratação com progresso
+  const colaboradoresEmContratacao = useMemo(() => {
+    return colaboradores
+      .filter(c => c.status === 'em_contratacao')
+      .map(colaborador => {
+        const progresso = getProgressoDocumentos(colaborador.id);
+        const docsObrigatorios = getDocumentosObrigatorios(colaborador.cargo);
+        const docsColaborador = documentos.filter(d => d.colaboradorId === colaborador.id);
+
+        return {
+          ...colaborador,
+          progresso,
+          docsObrigatorios,
+          documentos: docsColaborador,
+          percentualCompleto: docsObrigatorios.length > 0 
+            ? Math.round((progresso.aprovados / docsObrigatorios.length) * 100) 
+            : 0
+        };
+      });
+  }, [colaboradores, getProgressoDocumentos, getDocumentosObrigatorios, documentos]);
 
   const tabs = [
     { id: 'todas', label: 'Todas', count: solicitacoes.length },
     { id: 'pendentes', label: 'Pendentes', count: solicitacoes.filter(s => s.status === 'pendente').length },
+    { id: 'ponto', label: 'Ponto', count: solicitacoesPonto.filter(s => s.status === 'pendente').length },
+    { id: 'documentos', label: 'Documentos', count: colaboradoresEmContratacao.length },
     { id: 'historico', label: 'Histórico', count: solicitacoes.filter(s => s.status !== 'pendente').length }
   ];
 
   const solicitacoesFiltradas = solicitacoes.filter(s => {
     if (activeTab === 'pendentes') return s.status === 'pendente';
     if (activeTab === 'historico') return s.status !== 'pendente';
+    if (activeTab === 'documentos') return false; // Documentos tem renderização própria
+    if (activeTab === 'ponto') return false; // Ponto tem renderização própria
     return true;
   });
 
@@ -144,6 +190,84 @@ export function Solicitacoes() {
     setToRejectId(null);
   };
 
+  // Handlers para ponto
+  const handleAprovarPonto = (id: string) => {
+    setActionPontoId(id);
+    setActionPontoType('aprovar');
+    setApprovarPontoOpen(true);
+  };
+
+  const handleRejeitarPonto = (id: string) => {
+    setActionPontoId(id);
+    setActionPontoType('rejeitar');
+    setConfirmPontoOpen(true);
+  };
+
+  const confirmActionPonto = () => {
+    if (!actionPontoId || !user) return;
+    if (actionPontoType === 'rejeitar') {
+      const decididoPor = { id: user.id, name: user.name, role: user.role };
+      atualizarStatusPonto(actionPontoId, 'rejeitada', decididoPor);
+      try {
+        adicionarNotificacao({
+          tipo: 'solicitacao_rejeitada',
+          titulo: 'Solicitação de Ponto Rejeitada',
+          mensagem: `Sua solicitação foi rejeitada.`,
+          link: '/solicitacoes',
+          icone: 'XCircle',
+          cor: 'text-red-600',
+        });
+      } catch (e) {}
+      toast.error('Solicitação de ponto rejeitada');
+      setConfirmPontoOpen(false);
+      setActionPontoId(null);
+    }
+  };
+
+  const handleApproveConfirmedPonto = (id: string, horarioFinal?: string) => {
+    if (!id || !user) return;
+    const decididoPor = { id: user.id, name: user.name, role: user.role };
+    const sol = solicitacoesPonto.find((s) => s.id === id);
+    if (sol) {
+      if (sol.tipo === 'ajuste' && horarioFinal) {
+        aplicarAjusteAprovado({ data: sol.data, alvo: sol.alvo, horarioNovo: horarioFinal });
+      }
+      atualizarStatusPonto(id, 'aprovada', decididoPor);
+      try {
+        adicionarNotificacao({
+          tipo: 'ajuste_ponto_aprovado',
+          titulo: 'Solicitação atendida',
+          mensagem: `Sua solicitação foi aprovada e os dados foram atualizados.`,
+          link: '/ponto',
+          icone: 'CheckCircle',
+          cor: 'text-green-600',
+        });
+      } catch (e) {}
+    }
+    setApprovarPontoOpen(false);
+    setActionPontoId(null);
+  };
+
+  const toggleSelectPonto = (id: string) => {
+    setSelectedPontoIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
+
+  const handleBulkApprovePonto = () => {
+    if (selectedPontoIds.length === 0 || !user) return;
+    const decididoPor = { id: user.id, name: user.name, role: user.role };
+    selectedPontoIds.forEach((id) => atualizarStatusPonto(id, 'aprovada', decididoPor));
+    toast.success(`${selectedPontoIds.length} solicitações de ponto aprovadas`);
+    setSelectedPontoIds([]);
+  };
+
+  const handleBulkRejectPonto = () => {
+    if (selectedPontoIds.length === 0 || !user) return;
+    const decididoPor = { id: user.id, name: user.name, role: user.role };
+    selectedPontoIds.forEach((id) => atualizarStatusPonto(id, 'rejeitada', decididoPor));
+    toast.error(`${selectedPontoIds.length} solicitações de ponto rejeitadas`);
+    setSelectedPontoIds([]);
+  };
+
   const toggleSelect = (id: string) => {
     setSelectedIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   };
@@ -191,7 +315,293 @@ export function Solicitacoes() {
         )}
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
-        {isLoading ? (
+        {activeTab === 'ponto' ? (
+          // Renderização específica para aba de ponto
+          isAprovador ? (
+            solicitacoesPonto.length === 0 ? (
+              <EmptyState 
+                title="Nenhuma solicitação de ponto" 
+                description="Não há solicitações de ponto para exibir." 
+              />
+            ) : (
+              <>
+                {selectedPontoIds.length > 0 && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded mb-4">
+                    <span className="text-sm text-gray-700">{selectedPontoIds.length} selecionada(s)</span>
+                    <div className="ml-auto flex gap-2">
+                      <Button onClick={handleBulkApprovePonto} className="text-sm">Aprovar selecionadas</Button>
+                      <Button onClick={handleBulkRejectPonto} variant="outline" className="text-sm border-red-300 text-red-600">Rejeitar selecionadas</Button>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {solicitacoesPonto.map((sol) => (
+                    <Card key={sol.id} className="p-6 hover:shadow-lg transition-shadow">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          {isAprovador && sol.status === 'pendente' && (
+                            <input
+                              type="checkbox"
+                              checked={selectedPontoIds.includes(sol.id)}
+                              onChange={() => toggleSelectPonto(sol.id)}
+                              aria-label={`Selecionar solicitação de ${sol.colaboradorNome}`}
+                            />
+                          )}
+                          <Badge variant={sol.tipo === 'ajuste' ? 'material' : 'ferias'}>
+                            {sol.tipo === 'ajuste' ? 'Ajuste de Ponto' : 'Atestado Médico'}
+                          </Badge>
+                        </div>
+                        <Badge variant={sol.status}>
+                          {sol.status === 'pendente' ? 'Pendente' : sol.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
+                        </Badge>
+                      </div>
+
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">{sol.colaboradorNome}</h3>
+                      <p className="text-gray-600 text-sm mb-2">{sol.data}</p>
+                      {sol.tipo === 'ajuste' && (
+                        <div className="mb-3">
+                          <p className="text-sm text-gray-700"><strong>Alvo:</strong> {sol.alvo === 'entrada' ? 'Entrada' : 'Saída'}</p>
+                          {sol.horarioNovo && <p className="text-sm text-gray-700"><strong>Novo horário:</strong> {sol.horarioNovo}</p>}
+                        </div>
+                      )}
+                      <p className="text-sm text-gray-600 mb-4">{sol.motivo}</p>
+
+                      {sol.status === 'pendente' && isAprovador && (
+                        <div className="flex gap-2 pt-4 border-t border-gray-200">
+                          <Button
+                            onClick={() => handleAprovarPonto(sol.id)}
+                            className="flex-1 text-sm"
+                          >
+                            Aprovar
+                          </Button>
+                          <Button
+                            onClick={() => handleRejeitarPonto(sol.id)}
+                            variant="outline"
+                            className="flex-1 text-sm border-red-300 text-red-600"
+                          >
+                            Rejeitar
+                          </Button>
+                        </div>
+                      )}
+
+                      {sol.decididoPor && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded text-sm">
+                          <p className="text-gray-700"><strong>Decidido por:</strong> {sol.decididoPor.name}</p>
+                          {sol.decididoEm && <p className="text-gray-500 text-xs">{new Date(sol.decididoEm).toLocaleDateString('pt-BR')}</p>}
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )
+          ) : (
+            <EmptyState 
+              title="Acesso restrito" 
+              description="Apenas aprovadores podem visualizar solicitações de ponto." 
+            />
+          )
+        ) : activeTab === 'documentos' ? (
+          // Renderização específica para aba de documentos
+          isGestor ? (
+            colaboradoresEmContratacao.length === 0 ? (
+              <EmptyState 
+                title="Nenhum colaborador em contratação" 
+                description="Não há colaboradores aguardando documentação no momento." 
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {colaboradoresEmContratacao.map((colaborador) => (
+                  <Card key={colaborador.id} className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300 font-semibold text-lg">
+                          {colaborador.nome.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              {colaborador.nome}
+                            </h3>
+                            {colaborador.dispensaDocumentacao && (
+                              <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 text-xs rounded-full font-medium">
+                                ⚠️ Documentação dispensada
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <User size={14} />
+                              {colaborador.cargo}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Mail size={14} />
+                              {colaborador.email}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            criarPastasDeTemplate(colaborador.id, colaborador.cargo, user?.id || '1', user?.name || 'Sistema');
+                            toast.success('Pastas criadas!');
+                          }}
+                          variant="outline"
+                          className="px-3 py-2 text-sm"
+                        >
+                          Criar Pastas
+                        </Button>
+                        <Button
+                          onClick={() => enviarEmailBoasVindas(colaborador.id)}
+                          variant="outline"
+                          className="px-3 py-2 text-sm"
+                        >
+                          Enviar Email
+                        </Button>
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={colaborador.dispensaDocumentacao || false}
+                            onChange={(e) => {
+                              atualizarColaborador(colaborador.id, { dispensaDocumentacao: e.target.checked });
+                              toast.success(
+                                e.target.checked
+                                  ? 'Documentação dispensada - Situação atípica'
+                                  : 'Documentação obrigatória reativada'
+                              );
+                            }}
+                            className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                          />
+                          <span className="text-gray-700 dark:text-gray-300">Dispensar documentação</span>
+                        </label>
+                        <Button
+                          onClick={() => {
+                            const podeAtivar = podeAtivarColaborador(colaborador.id);
+                            if (podeAtivar.pode) {
+                              atualizarColaborador(colaborador.id, { status: 'ativo' });
+                              toast.success(`${colaborador.nome} ativado!`);
+                            } else {
+                              toast.error(podeAtivar.motivo || 'Não foi possível ativar o colaborador');
+                            }
+                          }}
+                          className="bg-green-600 hover:bg-green-700 px-3 py-2 text-sm"
+                          disabled={!podeAtivarColaborador(colaborador.id).pode}
+                        >
+                          Ativar
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Progresso */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-gray-600 dark:text-gray-400">Progresso da Documentação</span>
+                        <span className="font-semibold">{colaborador.percentualCompleto}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            colaborador.percentualCompleto === 100
+                              ? 'bg-green-500'
+                              : colaborador.percentualCompleto >= 50
+                              ? 'bg-blue-500'
+                              : 'bg-yellow-500'
+                          }`}
+                          style={{ width: `${colaborador.percentualCompleto}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-4 mt-2 text-sm">
+                        <span className="flex items-center gap-1 text-green-600">
+                          <CheckCircle size={14} />
+                          {colaborador.progresso.aprovados} aprovados
+                        </span>
+                        <span className="flex items-center gap-1 text-yellow-600">
+                          <Clock size={14} />
+                          {colaborador.progresso.pendentes} pendentes
+                        </span>
+                        <span className="flex items-center gap-1 text-red-600">
+                          <XCircle size={14} />
+                          {colaborador.progresso.rejeitados} rejeitados
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Documentos Obrigatórios */}
+                    <div className="space-y-2">
+                      {colaborador.docsObrigatorios.map((tipoDoc) => {
+                        const doc = colaborador.documentos.find(d => d.tipo === tipoDoc);
+                        return (
+                          <div key={tipoDoc} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              {doc ? (
+                                doc.status === 'aprovado' ? (
+                                  <CheckCircle className="text-green-600" size={18} />
+                                ) : doc.status === 'pendente' ? (
+                                  <Clock className="text-yellow-600" size={18} />
+                                ) : (
+                                  <XCircle className="text-red-600" size={18} />
+                                )
+                              ) : (
+                                <AlertCircle className="text-gray-400" size={18} />
+                              )}
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{tipoDoc}</p>
+                                {doc && (
+                                  <p className="text-xs text-gray-500">
+                                    {doc.nome}
+                                    {doc.observacoes && ` • ${doc.observacoes}`}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {doc && doc.status === 'pendente' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => {
+                                    aprovarDocumento(doc.id, user?.id || '1', user?.name || 'Gestor');
+                                    toast.success('Documento aprovado!');
+                                  }}
+                                  className="bg-green-600 hover:bg-green-700 px-3 py-1 text-sm"
+                                >
+                                  Aprovar
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    const motivo = prompt('Motivo da rejeição:');
+                                    if (motivo) {
+                                      rejeitarDocumento(doc.id, user?.id || '1', user?.name || 'Gestor', motivo);
+                                      toast.success('Documento rejeitado!');
+                                    }
+                                  }}
+                                  variant="outline"
+                                  className="text-red-600 border-red-600 px-3 py-1 text-sm"
+                                >
+                                  Rejeitar
+                                </Button>
+                              </div>
+                            )}
+
+                            {!doc && (
+                              <span className="text-xs text-gray-500">Aguardando envio</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )
+          ) : (
+            <EmptyState 
+              title="Acesso restrito" 
+              description="Apenas gestores podem visualizar documentações pendentes." 
+            />
+          )
+        ) : isLoading ? (
           <div className="grid grid-cols-1 gap-4">
             <SkeletonCard />
             <SkeletonCard />
@@ -517,6 +927,23 @@ export function Solicitacoes() {
           </div>
         )}
       </Modal>
+
+      <ApprovarSolicitacaoModal
+        isOpen={approvarPontoOpen}
+        onClose={() => setApprovarPontoOpen(false)}
+        onConfirm={handleApproveConfirmedPonto}
+        solicitacao={solicitacoesPonto.find(s => s.id === actionPontoId)}
+      />
+
+      <ConfirmModal
+        isOpen={confirmPontoOpen}
+        onClose={() => setConfirmPontoOpen(false)}
+        onConfirm={confirmActionPonto}
+        title="Rejeitar Solicitação de Ponto"
+        message="Tem certeza que deseja rejeitar esta solicitação de ponto?"
+        confirmText="Rejeitar"
+        variant="danger"
+      />
     </div>
   );
 }

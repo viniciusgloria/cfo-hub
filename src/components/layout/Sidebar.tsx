@@ -11,7 +11,7 @@ import {
   LogOut,
   X,
   ClipboardCheck,
-  
+  FolderOpen,
   BarChart,
   Calendar,
   Award,
@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
   { label: 'Calendário', path: '/calendario', icon: Calendar },
   { label: 'Clientes', path: '/clientes', icon: Users },
   { label: 'Chat', path: '/chat', icon: MessageSquare },
+  { label: 'Documentos', path: '/documentos', icon: FolderOpen },
   { label: 'Feedbacks', path: '/feedbacks', icon: MessageCircle },
   { label: 'Solicitações', path: '/solicitacoes', icon: FileText },
   { label: 'Configurações', path: '/configuracoes', icon: Settings },
@@ -41,12 +42,10 @@ const navItems: NavItem[] = [
 // Menu secundário (visualizações por nível de acesso) na ordem solicitada
 const navItemsGestor: NavItem[] = [
   { label: 'Avaliações', path: '/avaliacoes', icon: Award },
-  { label: 'Aprovações Ponto', path: '/solicitacoes-ponto', icon: ClipboardCheck },
   { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
   { label: 'Desenvolvimento', path: '/okrs', icon: Target },
   { label: 'Folha de Pagamento', path: '/folha-pagamento', icon: DollarSign },
   { label: 'Folha de Clientes', path: '/folha-clientes', icon: Receipt },
-  { label: 'Listar Colaboradores', path: '/funcionarios-cliente', icon: UserCog },
   { label: 'Relatórios', path: '/relatorios', icon: BarChart },
 ];
 
@@ -63,8 +62,10 @@ export function Sidebar({ isOpen = true, onClose, collapsed = false }: SidebarPr
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   
   
-  const isGestor = user?.role === 'admin' || user?.role === 'gestor' || user?.role === 'rh';
+  const isGestor = user?.role === 'admin' || user?.role === 'gestor';
   const isAdmin = user?.role === 'admin';
+  const isCliente = user?.role === 'cliente';
+  const isVisitante = user?.role === 'visitante';
 
   
 
@@ -171,7 +172,18 @@ export function Sidebar({ isOpen = true, onClose, collapsed = false }: SidebarPr
           </div>
 
           <nav className={`flex-1 px-3 ${collapsed ? 'space-y-1' : 'p-4 space-y-2'} transition-all`} data-tour="menu">
-            {navItems.map((item) => {
+            {navItems.filter((item) => {
+              // Visitantes: apenas Dashboard e Mural
+              if (isVisitante) {
+                return item.path === '/dashboard' || item.path === '/mural';
+              }
+              // Clientes: Dashboard, Clientes (seus dados), Chat, Feedbacks
+              if (isCliente) {
+                return ['/dashboard', '/clientes', '/chat', '/feedbacks'].includes(item.path);
+              }
+              // Colaboradores, Gestores, Admins: todos os itens
+              return true;
+            }).map((item) => {
               const getTourAttr = () => {
                 if (item.path === '/ponto') return 'ponto';
                 if (item.path === '/solicitacoes') return 'solicitacoes';
@@ -203,7 +215,7 @@ export function Sidebar({ isOpen = true, onClose, collapsed = false }: SidebarPr
             
             {isGestor && (
               <>
-                <div className="my-3 border-t border-gray-700" />
+                <div className={collapsed ? 'mx-3 my-3 border-t border-gray-700' : 'mx-4 my-3 border-t border-gray-700'} />
                 {navItemsGestor.map((item) => (
                   <NavLink
                     key={item.path}
@@ -224,8 +236,10 @@ export function Sidebar({ isOpen = true, onClose, collapsed = false }: SidebarPr
                 ))}
               </>
             )}
+            {/* bottom divider: keep inside nav so both dividers have same container width */}
+            <div className={collapsed ? 'mx-3 my-3 border-t border-gray-700' : 'mx-4 my-3 border-t border-gray-700'} />
           </nav>
-          <div className={`p-4 border-t border-gray-200 dark:border-gray-700 ${collapsed ? 'flex justify-center' : ''}`}>
+          <div className={`p-4 ${collapsed ? 'flex justify-center' : ''}`}>
             <button
               onClick={logout}
               className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} p-3 rounded-lg text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-white/10 w-full transition-all`}

@@ -1,12 +1,48 @@
 import { LucideIcon } from 'lucide-react';
 
+export type UserRole = 'admin' | 'gestor' | 'colaborador' | 'cliente' | 'visitante';
+
+export interface HistoricoAlteracao {
+  id: string;
+  tipo: 'cargo' | 'setor';
+  itemId: string;
+  itemNome: string;
+  acao: 'criacao' | 'edicao' | 'remocao';
+  alteradoPor: string; // nome do usuário
+  alteradoPorId: string; // id do usuário
+  alteradoEm: string;
+  detalhes?: string; // descrição da alteração
+}
+
+export interface Cargo {
+  id: string;
+  nome: string;
+  descricao?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  criadoPor?: string;
+  atualizadoPor?: string;
+}
+
+export interface Setor {
+  id: string;
+  nome: string;
+  descricao?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+  criadoPor?: string;
+  atualizadoPor?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'gestor' | 'colaborador' | 'rh' | 'visitante';
+  role: UserRole;
   avatar: string;
-  clienteId?: number; // ID do cliente vinculado (para role visitante)
+  cargoId?: string; // ID do cargo
+  setorId?: string; // ID do setor
+  clienteId?: number; // ID do cliente vinculado (para role cliente)
 }
 
 export interface NavItem {
