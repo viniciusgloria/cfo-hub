@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { FileText, Download, Clock, Users, Target, Filter, BarChart } from 'lucide-react';
+import { FileText, Download, Clock, Users, Target, Filter, BarChart, DollarSign, Building2 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Button } from '../components/ui/Button';
@@ -10,8 +10,10 @@ import { minutesToHHMM, formatBankMinutes } from '../utils/time';
 import { useSolicitacoesStore } from '../store/solicitacoesStore';
 import { useOKRsStore } from '../store/okrsStore';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
+import { useFolhaPagamentoStore } from '../store/folhaPagamentoStore';
+import { useFolhaClientesStore } from '../store/folhaClientesStore';
 
-type ReportType = 'ponto' | 'solicitacoes' | 'okrs' | 'colaboradores';
+type ReportType = 'ponto' | 'solicitacoes' | 'okrs' | 'colaboradores' | 'folha-pagamento' | 'folha-clientes';
 
 export function Relatorios() {
   usePageTitle('Relatórios');
@@ -23,6 +25,8 @@ export function Relatorios() {
   const { solicitacoes } = useSolicitacoesStore();
   const { okrs } = useOKRsStore();
   const { colaboradores } = useColaboradoresStore();
+  const { getFolhasFiltradas: getFolhasPagamento } = useFolhaPagamentoStore();
+  const { getFolhasFiltradas: getFolhasClientes } = useFolhaClientesStore();
 
   const reportTypes = [
     {
@@ -56,6 +60,22 @@ export function Relatorios() {
       icon: Users,
       color: 'bg-orange-100 text-orange-600',
       count: colaboradores.length,
+    },
+    {
+      type: 'folha-pagamento' as ReportType,
+      title: 'Relatório de Folha de Pagamento',
+      description: 'Folhas de pagamento dos colaboradores',
+      icon: DollarSign,
+      color: 'bg-emerald-100 text-emerald-600',
+      count: getFolhasPagamento().length,
+    },
+    {
+      type: 'folha-clientes' as ReportType,
+      title: 'Relatório de Folha de Clientes',
+      description: 'Folhas de pagamento dos clientes BPO',
+      icon: Building2,
+      color: 'bg-indigo-100 text-indigo-600',
+      count: getFolhasClientes().length,
     },
   ];
 
@@ -106,6 +126,24 @@ export function Relatorios() {
         });
         filename = 'relatorio-colaboradores.csv';
         break;
+      
+      case 'folha-pagamento':
+        csvContent = 'Colaborador,Função,Empresa,Contrato,Valor,Adicional,Reembolso,Desconto,Total,Situação,Data Pagamento\n';
+        const folhasPagamento = getFolhasPagamento();
+        folhasPagamento.forEach(f => {
+          csvContent += `${f.colaborador.nomeCompleto},${f.colaborador.funcao},${f.colaborador.empresa},${f.colaborador.contrato},${f.valor.toFixed(2)},${f.adicional.toFixed(2)},${f.reembolso.toFixed(2)},${f.desconto.toFixed(2)},${f.valorTotal.toFixed(2)},${f.situacao},${f.dataPagamento || ''}\n`;
+        });
+        filename = 'relatorio-folha-pagamento.csv';
+        break;
+      
+      case 'folha-clientes':
+        csvContent = 'Cliente,Colaborador,Função,Empresa,CTT,Valor,Adicional,Reembolso,Desconto,Total,Situação,Data Pagamento\n';
+        const folhasClientes = getFolhasClientes();
+        folhasClientes.forEach(f => {
+          csvContent += `${f.cliente.nome},${f.colaborador},${f.funcao},${f.empresa},${f.ctt || ''},${f.valor.toFixed(2)},${f.adicional.toFixed(2)},${f.reembolso.toFixed(2)},${f.desconto.toFixed(2)},${f.valorTotal.toFixed(2)},${f.situacao},${f.dataPagamento || ''}\n`;
+        });
+        filename = 'relatorio-folha-clientes.csv';
+        break;
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -137,6 +175,16 @@ export function Relatorios() {
       case 'colaboradores':
         data = colaboradores;
         filename = 'relatorio-colaboradores.json';
+        break;
+      
+      case 'folha-pagamento':
+        data = getFolhasPagamento();
+        filename = 'relatorio-folha-pagamento.json';
+        break;
+      
+      case 'folha-clientes':
+        data = getFolhasClientes();
+        filename = 'relatorio-folha-clientes.json';
         break;
     }
 
