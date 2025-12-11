@@ -234,6 +234,22 @@ const mockDocumentos: Documento[] = [
     status: 'pendente',
     historico: []
   }
+  ,
+  {
+    id: 'doc-5',
+    nome: 'Holerite - Maria Santos - Outubro/2024.pdf',
+    tipo: 'Outro',
+    tamanho: 1024 * 800, // ~0.8MB
+    dataUpload: '2024-11-06T12:00:00Z',
+    uploadPor: '1',
+    uploadPorNome: 'Sistema',
+    colaboradorId: 3,
+    colaboradorNome: 'Maria Santos',
+    pastaId: 'pasta-1',
+    mimetype: 'application/pdf',
+    status: 'aprovado',
+    historico: []
+  }
 ];
 
 export const useDocumentosStore = create<DocumentosState>()(

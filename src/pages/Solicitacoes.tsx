@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, XCircle, AlertCircle, User, Mail, ClipboardCheck } from 'lucide-react';
+import { Plus, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, XCircle, AlertCircle, User, Mail, ClipboardCheck, Send, Paperclip } from 'lucide-react';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
@@ -20,10 +20,13 @@ import { useAjustesPontoStore } from '../store/ajustesPontoStore';
 import { ApprovarSolicitacaoModal } from '../components/ApprovarSolicitacaoModal';
 import { usePontoStore } from '../store/pontoStore';
 import { useNotificacoesStore } from '../store/notificacoesStore';
+import { EnviarRespostaArquivosModal } from '../components/EnviarRespostaArquivosModal';
+import { Dropzone } from '../components/ui/Dropzone';
+import { useAttachmentUploader } from '../hooks/useAttachmentUploader';
 
 const tiposMap: Record<string, { label: string; badge: string }> = {
   material: { label: 'Material', badge: 'material' },
-  sala: { label: 'Sala', badge: 'sala' },
+  documento: { label: 'Documento', badge: 'documento' },
   reembolso: { label: 'Reembolso', badge: 'reembolso' },
   ferias: { label: 'Férias', badge: 'ferias' },
   homeoffice: { label: 'Home Office', badge: 'homeoffice' }
@@ -41,6 +44,7 @@ export function Solicitacoes() {
   const [detalhesId, setDetalhesId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ tipo: 'material', titulo: '', descricao: '', urgencia: 'media' });
   const [touched, setTouched] = useState({ titulo: false, descricao: false });
+  const { attachments, readyAttachments, handleFiles, removeAttachment, reset: resetUploads, isUploading, hasError } = useAttachmentUploader();
   
   // Estados para aprovação de ponto
   const [approvarPontoOpen, setApprovarPontoOpen] = useState(false);
@@ -53,7 +57,11 @@ export function Solicitacoes() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
 
-  const { solicitacoes, adicionarSolicitacao, atualizarStatus } = useSolicitacoesStore();
+  // Estados para envio de resposta com arquivos
+  const [enviarRespostaOpen, setEnviarRespostaOpen] = useState(false);
+  const [solicitacaoResposta, setSolicitacaoResposta] = useState<string | null>(null);
+
+  const { solicitacoes, adicionarSolicitacao, atualizarStatus, enviarRespostaComArquivos } = useSolicitacoesStore();
   const user = useAuthStore((state) => state.user);
   const { colaboradores, atualizarColaborador, enviarEmailBoasVindas } = useColaboradoresStore();
   const { documentos, getDocumentosObrigatorios, getProgressoDocumentos, aprovarDocumento, rejeitarDocumento, criarPastasDeTemplate } = useDocumentosStore();
@@ -125,6 +133,7 @@ export function Solicitacoes() {
     setTouched({ titulo: true, descricao: true });
     if (!formData.titulo) errors.push('Título é obrigatório.');
     if (!formData.descricao) errors.push('Descrição é obrigatória.');
+    if (hasError) errors.push('Remova anexos inválidos antes de enviar.');
 
     if (errors.length) {
       setFormErrors(errors);
@@ -140,13 +149,15 @@ export function Solicitacoes() {
       status: 'pendente' as const,
       solicitante: { nome: user?.name || 'Você', avatar: user?.name || 'Você' },
       data: new Date().toLocaleDateString('pt-BR'),
-      urgencia: formData.urgencia as any
+      urgencia: formData.urgencia as any,
+      anexos: readyAttachments
     };
 
     adicionarSolicitacao(novasolicitacao);
     toast.success('Solicitação enviada com sucesso!');
     setIsModalOpen(false);
     setFormData({ tipo: 'material', titulo: '', descricao: '', urgencia: 'media' });
+    resetUploads();
   };
 
   const handleAprovar = (id: string) => {
@@ -188,6 +199,19 @@ export function Solicitacoes() {
     toast.error('Solicitação rejeitada');
     setConfirmOpen(false);
     setToRejectId(null);
+  };
+
+  // Handler para enviar resposta com arquivos
+  const handleEnviarResposta = (id: string) => {
+    setSolicitacaoResposta(id);
+    setEnviarRespostaOpen(true);
+  };
+
+  const confirmEnviarResposta = (arquivos: any[], mensagem: string) => {
+    if (!solicitacaoResposta || !user) return;
+    enviarRespostaComArquivos(solicitacaoResposta, arquivos, mensagem, user.name || 'Gestor');
+    setEnviarRespostaOpen(false);
+    setSolicitacaoResposta(null);
   };
 
   // Handlers para ponto
@@ -644,42 +668,84 @@ export function Solicitacoes() {
                 <p className="text-lg font-bold text-green-600 mb-4">R$ {sol.valor.toFixed(2)}</p>
               )}
 
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${sol.solicitante.avatar}`} alt={sol.solicitante.nome} size="md" />
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{sol.solicitante.nome}</p>
-                  <p className="text-xs text-gray-500">Solicitante</p>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <Avatar src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${sol.solicitante.avatar}`} alt={sol.solicitante.nome} size="md" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{sol.solicitante.nome}</p>
+                    <span className="text-xs text-gray-500">{sol.data}</span>
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                <span className="text-xs text-gray-500">{sol.data}</span>
                 <Badge variant={`urgencia-${sol.urgencia}`}>
                   {urgenciaMap[sol.urgencia].label}
                 </Badge>
               </div>
+              <div className="mb-4 pb-4 border-b border-gray-200" />
 
-              {sol.status === 'pendente' && isAdmin && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAprovar(sol.id);
-                    }}
-                    className="flex-1 text-sm"
-                  >
-                    Aprovar
-                  </Button>
+              {sol.respostaGestor && (
+                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle size={16} className="text-emerald-600" />
+                    <p className="text-sm font-semibold text-emerald-800">Resposta enviada</p>
+                  </div>
+                  <p className="text-xs text-emerald-700 mb-1">
+                    Por <strong>{sol.respostaGestor.enviadoPor}</strong> em {sol.respostaGestor.enviadoEm}
+                  </p>
+                  {sol.respostaGestor.mensagem && (
+                    <p className="text-sm text-emerald-700 mt-2 italic">{sol.respostaGestor.mensagem}</p>
+                  )}
+                  {sol.arquivosResposta && sol.arquivosResposta.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs font-medium text-emerald-700">{sol.arquivosResposta.length} arquivo(s):</p>
+                      {sol.arquivosResposta.map((anexo) => (
+                        <div key={anexo.id} className="text-xs text-emerald-600 flex items-center gap-1">
+                          <FileText size={12} />
+                          <span className="truncate">{anexo.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isAdmin && !sol.respostaGestor && sol.status !== 'rejeitada' && (
+                <div
+                  className={`flex gap-2 ${sol.status === 'pendente' ? '' : 'pt-2 border-t border-gray-200'}`}
+                >
+                  {sol.status === 'pendente' && (
+                    <Button
+                      variant="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAprovar(sol.id);
+                      }}
+                      className="flex-1 text-sm"
+                    >
+                      Aprovar
+                    </Button>
+                  )}
+                  {sol.status === 'pendente' && (
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRejeitar(sol.id);
+                      }}
+                      className="flex-1 text-sm border-red-300 text-red-600"
+                    >
+                      Rejeitar
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleRejeitar(sol.id);
+                      handleEnviarResposta(sol.id);
                     }}
-                    className="flex-1 text-sm border-red-300 text-red-600"
+                    className="flex-1 text-sm border-emerald-300 text-emerald-600 flex items-center justify-center gap-1"
                   >
-                    Rejeitar
+                    <Send size={14} />
+                    Enviar Resposta
                   </Button>
                 </div>
               )}
@@ -833,6 +899,46 @@ export function Solicitacoes() {
             {!formData.descricao && touched.descricao && <p className="text-xs text-red-500">Descrição é obrigatória.</p>}
           </div>
 
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Paperclip size={16} />
+              Anexos (opcional)
+            </label>
+            <p className="text-xs text-gray-500">PDF, JPG ou PNG • até 5MB por arquivo</p>
+            <Dropzone onFiles={handleFiles} />
+            {attachments.length > 0 && (
+              <div className="space-y-2 border border-gray-200 rounded p-3 bg-gray-50">
+                {attachments.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 text-sm">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <FileText size={16} className="text-emerald-600" />
+                      <div className="min-w-0">
+                        <p className="truncate text-gray-800">{a.name}</p>
+                        <p className="text-xs text-gray-500">{(a.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <div className="w-full bg-gray-200 h-1 rounded overflow-hidden mt-1">
+                          <div className="bg-emerald-500 h-1" style={{ width: `${a.progress}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs text-red-600"
+                      onClick={() => removeAttachment(a.id)}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+                {hasError && (
+                  <p className="text-xs text-red-600">Remova anexos inválidos antes de enviar.</p>
+                )}
+                {isUploading && (
+                  <p className="text-xs text-gray-600">Processando anexos...</p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Urgência</label>
             <select
@@ -883,9 +989,12 @@ export function Solicitacoes() {
 
             <div>
               <p className="text-xs text-gray-500 mb-1">Solicitante</p>
-              <div className="flex items-center gap-2">
-                <Avatar src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${solicitacaoDetalhes.solicitante.avatar}`} alt={solicitacaoDetalhes.solicitante.nome} className="w-8 h-8" />
-                <span>{solicitacaoDetalhes.solicitante.nome}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Avatar src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${solicitacaoDetalhes.solicitante.avatar}`} alt={solicitacaoDetalhes.solicitante.nome} className="w-8 h-8" />
+                  <span className="font-medium text-gray-800">{solicitacaoDetalhes.solicitante.nome}</span>
+                </div>
+                <span className="text-xs text-gray-500">{solicitacaoDetalhes.data}</span>
               </div>
             </div>
 
@@ -899,34 +1008,88 @@ export function Solicitacoes() {
               )}
             </div>
 
-            {solicitacaoDetalhes.status === 'pendente' && isAdmin && (
+            {solicitacaoDetalhes.respostaGestor && (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle size={18} className="text-emerald-600" />
+                  <p className="font-semibold text-emerald-800">Resposta do Gestor</p>
+                </div>
+                <p className="text-sm text-emerald-700 mb-2">
+                  Enviado por <strong>{solicitacaoDetalhes.respostaGestor.enviadoPor}</strong> em {solicitacaoDetalhes.respostaGestor.enviadoEm}
+                </p>
+                {solicitacaoDetalhes.respostaGestor.mensagem && (
+                  <p className="text-sm text-emerald-700 mb-3 italic border-l-2 border-emerald-400 pl-2">
+                    "{solicitacaoDetalhes.respostaGestor.mensagem}"
+                  </p>
+                )}
+                {solicitacaoDetalhes.arquivosResposta && solicitacaoDetalhes.arquivosResposta.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-emerald-800">Arquivos anexados:</p>
+                    {solicitacaoDetalhes.arquivosResposta.map((anexo) => (
+                      <div key={anexo.id} className="flex items-center gap-2 p-2 bg-white rounded border border-emerald-200">
+                        <FileText size={16} className="text-emerald-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-800 truncate">{anexo.name}</p>
+                          <p className="text-xs text-gray-500">{(anexo.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isAdmin && !solicitacaoDetalhes.respostaGestor && solicitacaoDetalhes.status !== 'rejeitada' && (
               <div className="flex gap-2 pt-4 border-t border-gray-200">
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    handleAprovar(solicitacaoDetalhes.id);
-                    setDetalhesId(null);
-                  }}
-                  fullWidth
-                >
-                  Aprovar
-                </Button>
+                {solicitacaoDetalhes.status === 'pendente' && (
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      handleAprovar(solicitacaoDetalhes.id);
+                      setDetalhesId(null);
+                    }}
+                    fullWidth
+                  >
+                    Aprovar
+                  </Button>
+                )}
+                {solicitacaoDetalhes.status === 'pendente' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      handleRejeitar(solicitacaoDetalhes.id);
+                      setDetalhesId(null);
+                    }}
+                    fullWidth
+                    className="border-red-300 text-red-600"
+                  >
+                    Rejeitar
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => {
-                    handleRejeitar(solicitacaoDetalhes.id);
+                    handleEnviarResposta(solicitacaoDetalhes.id);
                     setDetalhesId(null);
                   }}
                   fullWidth
-                  className="border-red-300 text-red-600"
+                  className="border-emerald-300 text-emerald-600"
                 >
-                  Rejeitar
+                  <Send size={16} className="inline mr-2" />
+                  Enviar Resposta
                 </Button>
               </div>
             )}
           </div>
         )}
       </Modal>
+
+      <EnviarRespostaArquivosModal
+        isOpen={enviarRespostaOpen}
+        onClose={() => setEnviarRespostaOpen(false)}
+        solicitacao={solicitacoes.find(s => s.id === solicitacaoResposta) || null}
+        onConfirm={confirmEnviarResposta}
+      />
 
       <ApprovarSolicitacaoModal
         isOpen={approvarPontoOpen}

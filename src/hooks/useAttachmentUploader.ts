@@ -66,7 +66,7 @@ export function useAttachmentUploader() {
   const [attachments, setAttachments] = useState<UploadAttachment[]>([]);
   const controllersRef = useRef(new Map<string, AbortController>());
 
-  const MAX_BYTES = 3 * 1024 * 1024; // 3MB per user request
+  const MAX_BYTES = 5 * 1024 * 1024; // 5MB per user request
   const ALLOWED = new Set(['application/pdf', 'image/png', 'image/jpeg']);
 
   const patchAttachment = useCallback((id: string, patch: Partial<UploadAttachment>) => {
@@ -110,7 +110,7 @@ export function useAttachmentUploader() {
           remoteUrl: '',
           progress: 0,
           status: 'error',
-          error: 'Arquivo excede 3MB',
+          error: 'Arquivo excede 5MB',
         };
         setAttachments((prev) => [...prev, initialErr]);
         return;

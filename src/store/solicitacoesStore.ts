@@ -4,7 +4,7 @@ import { Attachment } from '../types';
 
 export interface Solicitacao {
   id: string;
-  tipo: 'material' | 'reembolso' | 'ferias' | 'homeoffice';
+  tipo: 'material' | 'documento' | 'reembolso' | 'ferias' | 'homeoffice';
   titulo: string;
   descricao: string;
   valor?: number;
@@ -13,12 +13,19 @@ export interface Solicitacao {
   data: string;
   urgencia: 'baixa' | 'media' | 'alta';
   anexos?: Attachment[];
+  respostaGestor?: {
+    enviadoEm: string;
+    enviadoPor: string;
+    mensagem?: string;
+  };
+  arquivosResposta?: Attachment[];
 }
 
 interface SolicitacoesState {
   solicitacoes: Solicitacao[];
   adicionarSolicitacao: (sol: Solicitacao) => void;
   atualizarStatus: (id: string, status: 'aprovada' | 'rejeitada') => void;
+  enviarRespostaComArquivos: (id: string, arquivos: Attachment[], mensagem: string, gestorNome: string) => void;
   reset: () => void;
 }
 
@@ -32,6 +39,32 @@ const mockSolicitacoes: Solicitacao[] = [
     solicitante: { nome: 'Maria Santos', avatar: 'Maria' },
     data: '02/11/2024',
     urgencia: 'media'
+  },
+  {
+    id: '2',
+    tipo: 'reembolso',
+    titulo: 'Solicitação de Holerite - Outubro/2024',
+    descricao: 'Preciso do holerite de outubro para apresentação bancária',
+    valor: 0,
+    status: 'pendente',
+    solicitante: { nome: 'Carlos Mendes', avatar: 'Carlos' },
+    data: '05/11/2024',
+    urgencia: 'alta',
+    respostaGestor: {
+      enviadoEm: '06/11/2024',
+      enviadoPor: 'Ana Silva',
+      mensagem: 'Segue em anexo o holerite solicitado. Qualquer dúvida, entre em contato.'
+    },
+    arquivosResposta: [
+      {
+        id: 'resp-1',
+        name: 'Holerite_Carlos_Mendes_Outubro2024.pdf',
+        mimeType: 'application/pdf',
+        size: 1024000,
+        dataUrl: 'data:application/pdf;base64,JVBERi0xLjQ=',
+        remoteUrl: 'https://files.cfo-hub.local/resp-1/Holerite_Carlos_Mendes_Outubro2024.pdf'
+      }
+    ]
   },
   {
     id: '3',
@@ -57,8 +90,22 @@ export const useSolicitacoesStore = create<SolicitacoesState>()(
         solicitacoes: state.solicitacoes.map(sol =>
           sol.id === id ? { ...sol, status } : sol
         )
-      }))
-      ,
+      })),
+      enviarRespostaComArquivos: (id, arquivos, mensagem, gestorNome) => set((state) => ({
+        solicitacoes: state.solicitacoes.map(sol =>
+          sol.id === id 
+            ? {
+                ...sol,
+                arquivosResposta: arquivos,
+                respostaGestor: {
+                  enviadoEm: new Date().toLocaleDateString('pt-BR'),
+                  enviadoPor: gestorNome,
+                  mensagem
+                }
+              }
+            : sol
+        )
+      })),
       reset: () => set({ solicitacoes: mockSolicitacoes }),
     }),
     { name: 'cfo:solicitacoes', partialize: (s) => ({ solicitacoes: s.solicitacoes }) }

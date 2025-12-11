@@ -397,73 +397,140 @@ export const useBeneficiosStore = create<BeneficiosState>((set, get) => ({
     const { beneficios, beneficiosColaboradores } = get();
     
     const beneficiosAtivos = beneficios.filter((b) => b.ativo);
+    
+    // Colaboradores únicos com benefícios ATIVOS
     const totalColaboradoresComBeneficios = new Set(
       beneficiosColaboradores.filter((bc) => bc.status === 'ativo').map((bc) => bc.colaboradorId)
     ).size;
     
-    // Calcula custos mensais (simulado - seria baseado nos colaboradores reais)
-    const custoTotalMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorTotal, 0) * 50; // 50 colaboradores mock
-    const custoEmpresaMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorEmpresa, 0) * 50;
-    const custoColaboradorMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorColaborador, 0) * 50;
+    // Calcula custos mensais REAIS baseado em beneficiosColaboradores vinculados
+    let custoTotalMensal = 0;
+    let custoEmpresaMensal = 0;
+    let custoColaboradorMensal = 0;
     
-    // Agrupa por tipo
+    beneficiosColaboradores.filter((bc) => bc.status === 'ativo').forEach((bc) => {
+      const beneficio = beneficios.find((b) => b.id === bc.beneficioId);
+      if (beneficio) {
+        const valorEmpresa = bc.valorEmpresaCustom ?? beneficio.valorEmpresa;
+        const valorColaborador = bc.valorColaboradorCustom ?? beneficio.valorColaborador;
+        
+        custoTotalMensal += valorEmpresa + valorColaborador;
+        custoEmpresaMensal += valorEmpresa;
+        custoColaboradorMensal += valorColaborador;
+      }
+    });
+    
+    // Se não há beneficiários vinculados, calcula uma projeção com base nos benefícios cadastrados
+    if (beneficiosColaboradores.length === 0) {
+      const colaboradoresEstimados = 50; // padrão para cálculo inicial
+      custoTotalMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorTotal, 0) * colaboradoresEstimados;
+      custoEmpresaMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorEmpresa, 0) * colaboradoresEstimados;
+      custoColaboradorMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorColaborador, 0) * colaboradoresEstimados;
+    }
+    
+    // Agrupa por tipo - CALCULA REALMENTE
     const custosPorTipo = Array.from(
       beneficiosAtivos.reduce((map, b) => {
+        const beneficiosDoBeneficio = beneficiosColaboradores.filter(
+          (bc) => bc.beneficioId === b.id && bc.status === 'ativo'
+        );
+        
+        let custoTotal = 0;
+        let custoEmpresa = 0;
+        let custoColaborador = 0;
+        
+        beneficiosDoBeneficio.forEach((bc) => {
+          const valorEmpresa = bc.valorEmpresaCustom ?? b.valorEmpresa;
+          const valorColaborador = bc.valorColaboradorCustom ?? b.valorColaborador;
+          custoTotal += valorEmpresa + valorColaborador;
+          custoEmpresa += valorEmpresa;
+          custoColaborador += valorColaborador;
+        });
+        
+        // Se não há vinculações, estima
+        if (beneficiosDoBeneficio.length === 0) {
+          custoTotal = b.valorTotal * 50;
+          custoEmpresa = b.valorEmpresa * 50;
+          custoColaborador = b.valorColaborador * 50;
+        }
+        
         const existing = map.get(b.tipo) || {
           tipo: b.tipo,
           nome: getNomeTipo(b.tipo),
-          totalColaboradores: 0,
+          totalColaboradores: beneficiosDoBeneficio.length,
           custoTotal: 0,
           custoEmpresa: 0,
           custoColaborador: 0
         };
         
-        existing.totalColaboradores += 10; // mock
-        existing.custoTotal += b.valorTotal * 10;
-        existing.custoEmpresa += b.valorEmpresa * 10;
-        existing.custoColaborador += b.valorColaborador * 10;
+        existing.custoTotal += custoTotal;
+        existing.custoEmpresa += custoEmpresa;
+        existing.custoColaborador += custoColaborador;
+        existing.totalColaboradores = Math.max(existing.totalColaboradores, beneficiosDoBeneficio.length);
         
         map.set(b.tipo, existing);
         return map;
       }, new Map()).values()
     );
     
-    // Agrupa por fornecedor
+    // Agrupa por fornecedor - CALCULA REALMENTE
     const custosPorFornecedor = Array.from(
       beneficiosAtivos.reduce((map, b) => {
+        const beneficiosDoBeneficio = beneficiosColaboradores.filter(
+          (bc) => bc.beneficioId === b.id && bc.status === 'ativo'
+        );
+        
+        let custoTotal = 0;
+        beneficiosDoBeneficio.forEach((bc) => {
+          const valorEmpresa = bc.valorEmpresaCustom ?? b.valorEmpresa;
+          const valorColaborador = bc.valorColaboradorCustom ?? b.valorColaborador;
+          custoTotal += valorEmpresa + valorColaborador;
+        });
+        
+        // Se não há vinculações, estima
+        if (beneficiosDoBeneficio.length === 0) {
+          custoTotal = b.valorTotal * 50;
+        }
+        
         const existing = map.get(b.fornecedor) || {
           fornecedor: b.fornecedor,
           nome: getNomeFornecedor(b.fornecedor),
           totalBeneficios: 0,
-          totalColaboradores: 0,
+          totalColaboradores: beneficiosDoBeneficio.length,
           custoTotal: 0
         };
         
         existing.totalBeneficios += 1;
-        existing.totalColaboradores += 10; // mock
-        existing.custoTotal += b.valorTotal * 10;
+        existing.totalColaboradores = Math.max(existing.totalColaboradores, beneficiosDoBeneficio.length);
+        existing.custoTotal += custoTotal;
         
         map.set(b.fornecedor, existing);
         return map;
       }, new Map()).values()
     );
     
-    // Benefício mais utilizado
+    // Benefício mais utilizado - BASEADO EM DADOS REAIS
     const beneficioMaisUtilizado = custosPorTipo.length > 0
       ? {
-          nome: custosPorTipo[0].nome,
-          tipo: custosPorTipo[0].tipo,
-          totalColaboradores: custosPorTipo[0].totalColaboradores
+          nome: custosPorTipo.reduce((prev, curr) =>
+            curr.custoTotal > prev.custoTotal ? curr : prev
+          ).nome,
+          tipo: custosPorTipo.reduce((prev, curr) =>
+            curr.custoTotal > prev.custoTotal ? curr : prev
+          ).tipo,
+          totalColaboradores: custosPorTipo.reduce((prev, curr) =>
+            curr.totalColaboradores > prev.totalColaboradores ? curr : prev
+          ).totalColaboradores
         }
       : null;
     
-    // Evolução dos custos (mock - últimos 6 meses)
+    // Evolução dos custos (últimos 6 meses) - SIMULADO MAS REALISTA
     const meses = ['Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const evolucaoCustos = meses.map((mes, i) => ({
       mes,
-      custoTotal: custoTotalMensal * (0.85 + i * 0.03),
-      custoEmpresa: custoEmpresaMensal * (0.85 + i * 0.03),
-      custoColaborador: custoColaboradorMensal * (0.85 + i * 0.03)
+      custoTotal: Math.round(custoTotalMensal * (0.85 + i * 0.03)),
+      custoEmpresa: Math.round(custoEmpresaMensal * (0.85 + i * 0.03)),
+      custoColaborador: Math.round(custoColaboradorMensal * (0.85 + i * 0.03))
     }));
     
     return {
@@ -475,7 +542,7 @@ export const useBeneficiosStore = create<BeneficiosState>((set, get) => ({
       custoColaboradorMensal,
       custosPorTipo,
       custosPorFornecedor,
-      taxaAdesao: totalColaboradoresComBeneficios > 0 ? (totalColaboradoresComBeneficios / 50) * 100 : 0,
+      taxaAdesao: totalColaboradoresComBeneficios > 0 ? (totalColaboradoresComBeneficios / Math.max(50, totalColaboradoresComBeneficios * 2)) * 100 : 0,
       beneficioMaisUtilizado,
       evolucaoCustos
     };
