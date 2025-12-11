@@ -132,7 +132,14 @@ export function CadastroUsuario() {
   }, [editId, isEdit, colaboradores, navigate, podeGerenciarUsuarios]);
 
   const handleChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      // Quando contrato muda, regime também muda
+      if (field === 'contrato') {
+        newData.regime = value as 'CLT' | 'PJ';
+      }
+      return newData;
+    });
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: '' }));
     }
@@ -214,7 +221,7 @@ export function CadastroUsuario() {
     }
 
     const meta = parseInt(formData.metaHorasMensais, 10);
-    if (isNaN(meta) || meta <= 0) {
+    if (formData.contrato !== 'PJ' && (isNaN(meta) || meta <= 0)) {
       newErrors.metaHorasMensais = 'Meta de horas inválida';
     }
 
@@ -658,7 +665,7 @@ export function CadastroUsuario() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meta de Horas Mensais *
+                    Meta de Horas Mensais {(formData as any).contrato !== 'PJ' ? '*' : ''}
                   </label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, UserCog } from 'lucide-react';
+import { Plus, Edit, UserCog, Gift } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import PageBanner from '../components/ui/PageBanner';
 import { Input } from '../components/ui/Input';
@@ -12,6 +12,7 @@ import { CollaboratorCard } from '../components/CollaboratorCard';
 import { Pagination } from '../components/ui/Pagination';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
 import { useAuthStore } from '../store/authStore';
+import { useBeneficiosStore } from '../store/beneficiosStore';
 import { SkeletonCard } from '../components/ui/SkeletonCard';
 import { useEffect } from 'react';
 import { formatPhone } from '../utils/validation';
@@ -36,6 +37,7 @@ export function Colaboradores() {
   const { user } = useAuthStore();
   const { getDocumentosByColaborador, getPastasByColaborador, getDocumentosByPasta } = useDocumentosStore();
   const { registros, bancoHoras } = usePontoStore();
+  const { getBeneficiosPorColaborador, getCustoTotalColaborador, beneficios: beneficiosDisponiveis } = useBeneficiosStore();
   const { solicitacoes } = useSolicitacoesStore();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
@@ -167,7 +169,7 @@ export function Colaboradores() {
       <Modal isOpen={open} onClose={() => setOpen(false)} title={sel ? sel.nome : 'Perfil'}>
         {sel && (
           <div>
-            <Tabs tabs={[{ id: 'dados', label: 'Dados' }, { id: 'jornada', label: 'Jornada' }, { id: 'documentos', label: 'Documentos' }, { id: 'ferias', label: 'Férias' }, { id: 'ponto', label: 'Ponto' }]} activeTab={activeTab} onTabChange={setActiveTab}>
+            <Tabs tabs={[{ id: 'dados', label: 'Dados' }, { id: 'jornada', label: 'Jornada' }, { id: 'beneficios', label: 'Benefícios' }, { id: 'documentos', label: 'Documentos' }, { id: 'ferias', label: 'Férias' }, { id: 'ponto', label: 'Ponto' }]} activeTab={activeTab} onTabChange={setActiveTab}>
               {activeTab === 'dados' && (
                 <div className="space-y-3">
                   <p className="text-sm"><strong>Email:</strong> {sel.email}</p>
@@ -219,6 +221,106 @@ export function Colaboradores() {
                       </div>
                     </>
                   )}
+                </div>
+              )}
+              {activeTab === 'beneficios' && (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                      Benefícios vinculados a este colaborador. Alterações na página Benefícios refletem automaticamente aqui.
+                    </p>
+                  </div>
+
+                  {(() => {
+                    const beneficiosColaborador = getBeneficiosPorColaborador(String(sel.id));
+                    const custoTotal = getCustoTotalColaborador(String(sel.id));
+                    
+                    return (
+                      <>
+                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Gift className="h-5 w-5 text-emerald-600" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Custo Total Mensal</p>
+                                <p className="text-xs text-gray-500">Benefícios ativos</p>
+                              </div>
+                            </div>
+                            <p className="text-xl font-bold text-emerald-600">
+                              R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {beneficiosColaborador.length === 0 ? (
+                          <div className="text-center py-8">
+                            <Gift className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Nenhum benefício vinculado</p>
+                            <p className="text-xs text-gray-500 mt-1">Acesse a página Benefícios para vincular</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {beneficiosColaborador.map((bc) => {
+                              const beneficio = beneficiosDisponiveis.find(b => b.id === bc.beneficioId);
+                              if (!beneficio) return null;
+                              
+                              return (
+                                <div key={bc.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1">
+                                      <h4 className="font-medium text-sm text-gray-800 dark:text-gray-200">{beneficio.nome}</h4>
+                                      <p className="text-xs text-gray-500 mt-1">{beneficio.descricao}</p>
+                                    </div>
+                                    <Badge variant={bc.status === 'ativo' ? 'success' : bc.status === 'suspenso' ? 'warning' : 'error'}>
+                                      {bc.status === 'ativo' ? 'Ativo' : bc.status === 'suspenso' ? 'Suspenso' : 'Cancelado'}
+                                    </Badge>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                    <div>
+                                      <p className="text-xs text-gray-500">Empresa</p>
+                                      <p className="text-sm font-medium text-emerald-600">
+                                        R$ {bc.valorEmpresa.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500">Colaborador</p>
+                                      <p className="text-sm font-medium text-gray-600">
+                                        R$ {bc.valorColaborador.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  {beneficio.fornecedor !== 'manual' && (
+                                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                      <p className="text-xs text-gray-500">
+                                        <strong>Fornecedor:</strong> {beneficio.fornecedor.toUpperCase()}
+                                      </p>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="mt-2 text-xs text-gray-400">
+                                    Vinculado em: {new Date(bc.criadoEm).toLocaleDateString('pt-BR')}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
+                        <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                          <Button 
+                            onClick={() => navigate('/beneficios')} 
+                            variant="outline" 
+                            className="w-full flex items-center justify-center gap-2 whitespace-nowrap"
+                          >
+                            <Gift size={16} />
+                            Gerenciar Benefícios
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               {activeTab === 'jornada' && (

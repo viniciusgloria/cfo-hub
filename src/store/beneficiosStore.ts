@@ -1,0 +1,588 @@
+import { create } from 'zustand';
+import { 
+  Beneficio, 
+  BeneficioColaborador, 
+  TransacaoBeneficio, 
+  MetricasBeneficios, 
+  FornecedorConfig,
+  TipoBeneficio,
+  FornecedorBeneficio
+} from '../types';
+
+interface BeneficiosState {
+  // Estado
+  beneficios: Beneficio[];
+  beneficiosColaboradores: BeneficioColaborador[];
+  transacoes: TransacaoBeneficio[];
+  fornecedores: FornecedorConfig[];
+  metricas: MetricasBeneficios | null;
+  
+  // Filtros e UI
+  filtroTipo: TipoBeneficio | 'todos';
+  filtroStatus: 'todos' | 'ativo' | 'inativo';
+  filtroFornecedor: FornecedorBeneficio | 'todos';
+  termoBusca: string;
+  
+  // Actions - Benefícios
+  carregarBeneficios: () => void;
+  adicionarBeneficio: (beneficio: Omit<Beneficio, 'id' | 'criadoEm' | 'atualizadoEm'>) => void;
+  editarBeneficio: (id: string, dados: Partial<Beneficio>) => void;
+  removerBeneficio: (id: string) => void;
+  ativarDesativarBeneficio: (id: string) => void;
+  
+  // Actions - Benefícios de Colaboradores
+  carregarBeneficiosColaboradores: () => void;
+  vincularBeneficioColaborador: (dados: Omit<BeneficioColaborador, 'id' | 'criadoEm' | 'atualizadoEm'>) => void;
+  desvincularBeneficioColaborador: (id: string, motivo?: string) => void;
+  atualizarStatusBeneficioColaborador: (id: string, status: BeneficioColaborador['status']) => void;
+  
+  // Actions - Transações
+  carregarTransacoes: () => void;
+  registrarTransacao: (dados: Omit<TransacaoBeneficio, 'id' | 'criadoEm'>) => void;
+  
+  // Actions - Fornecedores
+  carregarFornecedores: () => void;
+  configurarFornecedor: (config: FornecedorConfig) => void;
+  sincronizarFornecedor: (fornecedor: FornecedorBeneficio) => Promise<void>;
+  
+  // Actions - Métricas
+  carregarMetricas: () => void;
+  calcularMetricas: () => MetricasBeneficios;
+  
+  // Actions - Filtros
+  setFiltroTipo: (tipo: TipoBeneficio | 'todos') => void;
+  setFiltroStatus: (status: 'todos' | 'ativo' | 'inativo') => void;
+  setFiltroFornecedor: (fornecedor: FornecedorBeneficio | 'todos') => void;
+  setTermoBusca: (termo: string) => void;
+  limparFiltros: () => void;
+  
+  // Getters
+  getBeneficiosFiltrados: () => Beneficio[];
+  getBeneficiosPorColaborador: (colaboradorId: string) => BeneficioColaborador[];
+  getTransacoesPorColaborador: (colaboradorId: string) => TransacaoBeneficio[];
+  getCustoTotalColaborador: (colaboradorId: string) => number;
+}
+
+// Dados mock iniciais
+const beneficiosMock: Beneficio[] = [
+  {
+    id: '1',
+    tipo: 'alimentacao',
+    nome: 'Vale Alimentação',
+    descricao: 'Benefício para compras em supermercados',
+    fornecedor: 'alelo',
+    valorEmpresa: 400,
+    valorColaborador: 0,
+    valorTotal: 400,
+    taxaAdministracao: 2.5,
+    obrigatorio: false,
+    aplicavelTodos: true,
+    regimeElegivel: ['CLT', 'PJ'],
+    ativo: true,
+    dataInicio: '2024-01-01',
+    integracaoConfig: {
+      sincronizacaoAutomatica: true,
+      ultimaSincronizacao: '2024-12-10T08:00:00'
+    },
+    criadoEm: '2024-01-01T10:00:00',
+    atualizadoEm: '2024-01-01T10:00:00'
+  },
+  {
+    id: '2',
+    tipo: 'refeicao',
+    nome: 'Vale Refeição',
+    descricao: 'Benefício para refeições em restaurantes',
+    fornecedor: 'sodexo',
+    valorEmpresa: 30,
+    valorColaborador: 0,
+    valorTotal: 660, // 30 por dia x 22 dias
+    taxaAdministracao: 3.0,
+    obrigatorio: true,
+    aplicavelTodos: true,
+    regimeElegivel: ['CLT'],
+    ativo: true,
+    dataInicio: '2024-01-01',
+    integracaoConfig: {
+      sincronizacaoAutomatica: true,
+      ultimaSincronizacao: '2024-12-10T08:00:00'
+    },
+    criadoEm: '2024-01-01T10:00:00',
+    atualizadoEm: '2024-01-01T10:00:00'
+  },
+  {
+    id: '3',
+    tipo: 'transporte',
+    nome: 'Vale Transporte',
+    descricao: 'Benefício para deslocamento casa-trabalho',
+    fornecedor: 'vr',
+    valorEmpresa: 0,
+    valorColaborador: 220,
+    valorTotal: 220,
+    taxaAdministracao: 0,
+    obrigatorio: false,
+    aplicavelTodos: true,
+    regimeElegivel: ['CLT'],
+    ativo: true,
+    dataInicio: '2024-01-01',
+    integracaoConfig: {
+      sincronizacaoAutomatica: false
+    },
+    criadoEm: '2024-01-01T10:00:00',
+    atualizadoEm: '2024-01-01T10:00:00'
+  },
+  {
+    id: '4',
+    tipo: 'saude',
+    nome: 'Plano de Saúde',
+    descricao: 'Plano de saúde empresarial',
+    fornecedor: 'manual',
+    valorEmpresa: 350,
+    valorColaborador: 150,
+    valorTotal: 500,
+    obrigatorio: false,
+    aplicavelTodos: false,
+    regimeElegivel: ['CLT'],
+    ativo: true,
+    dataInicio: '2024-01-01',
+    integracaoConfig: {
+      sincronizacaoAutomatica: false
+    },
+    criadoEm: '2024-01-01T10:00:00',
+    atualizadoEm: '2024-01-01T10:00:00'
+  },
+  {
+    id: '5',
+    tipo: 'academia',
+    nome: 'Gympass',
+    descricao: 'Acesso a academias e estúdios',
+    fornecedor: 'manual',
+    valorEmpresa: 60,
+    valorColaborador: 19.90,
+    valorTotal: 79.90,
+    obrigatorio: false,
+    aplicavelTodos: true,
+    regimeElegivel: ['CLT', 'PJ'],
+    ativo: true,
+    dataInicio: '2024-03-01',
+    integracaoConfig: {
+      sincronizacaoAutomatica: false
+    },
+    criadoEm: '2024-03-01T10:00:00',
+    atualizadoEm: '2024-03-01T10:00:00'
+  },
+  {
+    id: '6',
+    tipo: 'odontologico',
+    nome: 'Plano Odontológico',
+    descricao: 'Plano odontológico empresarial',
+    fornecedor: 'manual',
+    valorEmpresa: 25,
+    valorColaborador: 15,
+    valorTotal: 40,
+    obrigatorio: false,
+    aplicavelTodos: false,
+    regimeElegivel: ['CLT'],
+    ativo: true,
+    dataInicio: '2024-01-01',
+    integracaoConfig: {
+      sincronizacaoAutomatica: false
+    },
+    criadoEm: '2024-01-01T10:00:00',
+    atualizadoEm: '2024-01-01T10:00:00'
+  }
+];
+
+const fornecedoresMock: FornecedorConfig[] = [
+  {
+    fornecedor: 'alelo',
+    nome: 'Alelo',
+    integracaoAtiva: true,
+    ultimaSincronizacao: '2024-12-10T08:00:00'
+  },
+  {
+    fornecedor: 'sodexo',
+    nome: 'Sodexo',
+    integracaoAtiva: true,
+    ultimaSincronizacao: '2024-12-10T08:00:00'
+  },
+  {
+    fornecedor: 'vr',
+    nome: 'VR Benefícios',
+    integracaoAtiva: false
+  },
+  {
+    fornecedor: 'ticket',
+    nome: 'Ticket',
+    integracaoAtiva: false
+  },
+  {
+    fornecedor: 'flash',
+    nome: 'Flash',
+    integracaoAtiva: false
+  },
+  {
+    fornecedor: 'caju',
+    nome: 'Caju',
+    integracaoAtiva: false
+  }
+];
+
+export const useBeneficiosStore = create<BeneficiosState>((set, get) => ({
+  // Estado inicial
+  beneficios: [],
+  beneficiosColaboradores: [],
+  transacoes: [],
+  fornecedores: [],
+  metricas: null,
+  
+  // Filtros
+  filtroTipo: 'todos',
+  filtroStatus: 'todos',
+  filtroFornecedor: 'todos',
+  termoBusca: '',
+  
+  // Actions - Benefícios
+  carregarBeneficios: () => {
+    // Simula carregamento de API
+    set({ beneficios: beneficiosMock });
+  },
+  
+  adicionarBeneficio: (beneficio) => {
+    const novoBeneficio: Beneficio = {
+      ...beneficio,
+      id: Date.now().toString(),
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString()
+    };
+    
+    set((state) => ({
+      beneficios: [...state.beneficios, novoBeneficio]
+    }));
+  },
+  
+  editarBeneficio: (id, dados) => {
+    set((state) => ({
+      beneficios: state.beneficios.map((b) =>
+        b.id === id
+          ? { ...b, ...dados, atualizadoEm: new Date().toISOString() }
+          : b
+      )
+    }));
+  },
+  
+  removerBeneficio: (id) => {
+    set((state) => ({
+      beneficios: state.beneficios.filter((b) => b.id !== id)
+    }));
+  },
+  
+  ativarDesativarBeneficio: (id) => {
+    set((state) => ({
+      beneficios: state.beneficios.map((b) =>
+        b.id === id
+          ? { ...b, ativo: !b.ativo, atualizadoEm: new Date().toISOString() }
+          : b
+      )
+    }));
+  },
+  
+  // Actions - Benefícios de Colaboradores
+  carregarBeneficiosColaboradores: () => {
+    // Simula carregamento de API
+    set({ beneficiosColaboradores: [] });
+  },
+  
+  vincularBeneficioColaborador: (dados) => {
+    const novo: BeneficioColaborador = {
+      ...dados,
+      id: Date.now().toString(),
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString()
+    };
+    
+    set((state) => ({
+      beneficiosColaboradores: [...state.beneficiosColaboradores, novo]
+    }));
+  },
+  
+  desvincularBeneficioColaborador: (id, motivo) => {
+    set((state) => ({
+      beneficiosColaboradores: state.beneficiosColaboradores.map((bc) =>
+        bc.id === id
+          ? {
+              ...bc,
+              status: 'cancelado' as const,
+              dataCancelamento: new Date().toISOString(),
+              motivoCancelamento: motivo,
+              atualizadoEm: new Date().toISOString()
+            }
+          : bc
+      )
+    }));
+  },
+  
+  atualizarStatusBeneficioColaborador: (id, status) => {
+    set((state) => ({
+      beneficiosColaboradores: state.beneficiosColaboradores.map((bc) =>
+        bc.id === id
+          ? { ...bc, status, atualizadoEm: new Date().toISOString() }
+          : bc
+      )
+    }));
+  },
+  
+  // Actions - Transações
+  carregarTransacoes: () => {
+    set({ transacoes: [] });
+  },
+  
+  registrarTransacao: (dados) => {
+    const nova: TransacaoBeneficio = {
+      ...dados,
+      id: Date.now().toString(),
+      criadoEm: new Date().toISOString()
+    };
+    
+    set((state) => ({
+      transacoes: [...state.transacoes, nova]
+    }));
+  },
+  
+  // Actions - Fornecedores
+  carregarFornecedores: () => {
+    set({ fornecedores: fornecedoresMock });
+  },
+  
+  configurarFornecedor: (config) => {
+    set((state) => {
+      const existe = state.fornecedores.find((f) => f.fornecedor === config.fornecedor);
+      
+      if (existe) {
+        return {
+          fornecedores: state.fornecedores.map((f) =>
+            f.fornecedor === config.fornecedor ? config : f
+          )
+        };
+      }
+      
+      return {
+        fornecedores: [...state.fornecedores, config]
+      };
+    });
+  },
+  
+  sincronizarFornecedor: async (fornecedor) => {
+    // Simula sincronização com API do fornecedor
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        set((state) => ({
+          fornecedores: state.fornecedores.map((f) =>
+            f.fornecedor === fornecedor
+              ? { ...f, ultimaSincronizacao: new Date().toISOString() }
+              : f
+          )
+        }));
+        resolve();
+      }, 2000);
+    });
+  },
+  
+  // Actions - Métricas
+  carregarMetricas: () => {
+    const metricas = get().calcularMetricas();
+    set({ metricas });
+  },
+  
+  calcularMetricas: () => {
+    const { beneficios, beneficiosColaboradores } = get();
+    
+    const beneficiosAtivos = beneficios.filter((b) => b.ativo);
+    const totalColaboradoresComBeneficios = new Set(
+      beneficiosColaboradores.filter((bc) => bc.status === 'ativo').map((bc) => bc.colaboradorId)
+    ).size;
+    
+    // Calcula custos mensais (simulado - seria baseado nos colaboradores reais)
+    const custoTotalMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorTotal, 0) * 50; // 50 colaboradores mock
+    const custoEmpresaMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorEmpresa, 0) * 50;
+    const custoColaboradorMensal = beneficiosAtivos.reduce((acc, b) => acc + b.valorColaborador, 0) * 50;
+    
+    // Agrupa por tipo
+    const custosPorTipo = Array.from(
+      beneficiosAtivos.reduce((map, b) => {
+        const existing = map.get(b.tipo) || {
+          tipo: b.tipo,
+          nome: getNomeTipo(b.tipo),
+          totalColaboradores: 0,
+          custoTotal: 0,
+          custoEmpresa: 0,
+          custoColaborador: 0
+        };
+        
+        existing.totalColaboradores += 10; // mock
+        existing.custoTotal += b.valorTotal * 10;
+        existing.custoEmpresa += b.valorEmpresa * 10;
+        existing.custoColaborador += b.valorColaborador * 10;
+        
+        map.set(b.tipo, existing);
+        return map;
+      }, new Map()).values()
+    );
+    
+    // Agrupa por fornecedor
+    const custosPorFornecedor = Array.from(
+      beneficiosAtivos.reduce((map, b) => {
+        const existing = map.get(b.fornecedor) || {
+          fornecedor: b.fornecedor,
+          nome: getNomeFornecedor(b.fornecedor),
+          totalBeneficios: 0,
+          totalColaboradores: 0,
+          custoTotal: 0
+        };
+        
+        existing.totalBeneficios += 1;
+        existing.totalColaboradores += 10; // mock
+        existing.custoTotal += b.valorTotal * 10;
+        
+        map.set(b.fornecedor, existing);
+        return map;
+      }, new Map()).values()
+    );
+    
+    // Benefício mais utilizado
+    const beneficioMaisUtilizado = custosPorTipo.length > 0
+      ? {
+          nome: custosPorTipo[0].nome,
+          tipo: custosPorTipo[0].tipo,
+          totalColaboradores: custosPorTipo[0].totalColaboradores
+        }
+      : null;
+    
+    // Evolução dos custos (mock - últimos 6 meses)
+    const meses = ['Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const evolucaoCustos = meses.map((mes, i) => ({
+      mes,
+      custoTotal: custoTotalMensal * (0.85 + i * 0.03),
+      custoEmpresa: custoEmpresaMensal * (0.85 + i * 0.03),
+      custoColaborador: custoColaboradorMensal * (0.85 + i * 0.03)
+    }));
+    
+    return {
+      totalBeneficios: beneficios.length,
+      beneficiosAtivos: beneficiosAtivos.length,
+      totalColaboradoresComBeneficios,
+      custoTotalMensal,
+      custoEmpresaMensal,
+      custoColaboradorMensal,
+      custosPorTipo,
+      custosPorFornecedor,
+      taxaAdesao: totalColaboradoresComBeneficios > 0 ? (totalColaboradoresComBeneficios / 50) * 100 : 0,
+      beneficioMaisUtilizado,
+      evolucaoCustos
+    };
+  },
+  
+  // Actions - Filtros
+  setFiltroTipo: (tipo) => set({ filtroTipo: tipo }),
+  setFiltroStatus: (status) => set({ filtroStatus: status }),
+  setFiltroFornecedor: (fornecedor) => set({ filtroFornecedor: fornecedor }),
+  setTermoBusca: (termo) => set({ termoBusca: termo }),
+  
+  limparFiltros: () =>
+    set({
+      filtroTipo: 'todos',
+      filtroStatus: 'todos',
+      filtroFornecedor: 'todos',
+      termoBusca: ''
+    }),
+  
+  // Getters
+  getBeneficiosFiltrados: () => {
+    const { beneficios, filtroTipo, filtroStatus, filtroFornecedor, termoBusca } = get();
+    
+    return beneficios.filter((b) => {
+      // Filtro de tipo
+      if (filtroTipo !== 'todos' && b.tipo !== filtroTipo) return false;
+      
+      // Filtro de status
+      if (filtroStatus !== 'todos') {
+        if (filtroStatus === 'ativo' && !b.ativo) return false;
+        if (filtroStatus === 'inativo' && b.ativo) return false;
+      }
+      
+      // Filtro de fornecedor
+      if (filtroFornecedor !== 'todos' && b.fornecedor !== filtroFornecedor) return false;
+      
+      // Busca por termo
+      if (termoBusca) {
+        const termo = termoBusca.toLowerCase();
+        return (
+          b.nome.toLowerCase().includes(termo) ||
+          b.descricao?.toLowerCase().includes(termo) ||
+          getNomeTipo(b.tipo).toLowerCase().includes(termo) ||
+          getNomeFornecedor(b.fornecedor).toLowerCase().includes(termo)
+        );
+      }
+      
+      return true;
+    });
+  },
+  
+  getBeneficiosPorColaborador: (colaboradorId) => {
+    return get().beneficiosColaboradores.filter((bc) => bc.colaboradorId === colaboradorId);
+  },
+  
+  getTransacoesPorColaborador: (colaboradorId) => {
+    return get().transacoes.filter((t) => t.colaboradorId === colaboradorId);
+  },
+  
+  getCustoTotalColaborador: (colaboradorId) => {
+    const { beneficios, beneficiosColaboradores } = get();
+    const beneficiosDoColaborador = beneficiosColaboradores.filter(
+      (bc) => bc.colaboradorId === colaboradorId && bc.status === 'ativo'
+    );
+    
+    return beneficiosDoColaborador.reduce((total, bc) => {
+      const beneficio = beneficios.find((b) => b.id === bc.beneficioId);
+      if (!beneficio) return total;
+      
+      const valorEmpresa = bc.valorEmpresaCustom ?? beneficio.valorEmpresa;
+      const valorColaborador = bc.valorColaboradorCustom ?? beneficio.valorColaborador;
+      
+      return total + valorEmpresa + valorColaborador;
+    }, 0);
+  }
+}));
+
+// Funções auxiliares
+function getNomeTipo(tipo: TipoBeneficio): string {
+  const nomes: Record<TipoBeneficio, string> = {
+    alimentacao: 'Alimentação',
+    refeicao: 'Refeição',
+    transporte: 'Transporte',
+    saude: 'Saúde',
+    odontologico: 'Odontológico',
+    academia: 'Academia',
+    seguro_vida: 'Seguro de Vida',
+    vale_cultura: 'Vale Cultura',
+    auxilio_creche: 'Auxílio Creche',
+    outros: 'Outros'
+  };
+  return nomes[tipo];
+}
+
+function getNomeFornecedor(fornecedor: FornecedorBeneficio): string {
+  const nomes: Record<FornecedorBeneficio, string> = {
+    alelo: 'Alelo',
+    sodexo: 'Sodexo',
+    vr: 'VR Benefícios',
+    ticket: 'Ticket',
+    flash: 'Flash',
+    ben: 'Ben Benefícios',
+    caju: 'Caju',
+    swile: 'Swile',
+    ifood: 'iFood Benefícios',
+    pluxee: 'Pluxee',
+    manual: 'Manual'
+  };
+  return nomes[fornecedor];
+}

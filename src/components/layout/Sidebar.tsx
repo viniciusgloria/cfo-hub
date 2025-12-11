@@ -16,12 +16,15 @@ import {
   Calendar,
   Award,
   DollarSign,
-  Receipt
+  Receipt,
+  Gift
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useEmpresaStore } from '../../store/empresaStore';
+import { useCargosSetoresStore } from '../../store/cargosSetoresStore';
 import { NavItem } from '../../types';
+import { getAllowedPaths } from '../../utils/permissions';
 import { useEffect, useRef } from 'react';
 
 
@@ -41,11 +44,12 @@ const navItems: NavItem[] = [
 
 // Menu secundário (visualizações por nível de acesso) na ordem solicitada
 const navItemsGestor: NavItem[] = [
-  { label: 'Avaliações', path: '/avaliacoes', icon: Award },
+  { label: 'Benefícios', path: '/beneficios', icon: Gift },
   { label: 'Colaboradores', path: '/colaboradores', icon: UserCog },
-  { label: 'Desenvolvimento', path: '/okrs', icon: Target },
   { label: 'Folha de Pagamento', path: '/folha-pagamento', icon: DollarSign },
   { label: 'Folha de Clientes', path: '/folha-clientes', icon: Receipt },
+  { label: 'Avaliações', path: '/avaliacoes', icon: Award },
+  { label: 'Desenvolvimento', path: '/okrs', icon: Target },
   { label: 'Relatórios', path: '/relatorios', icon: BarChart },
 ];
 
@@ -58,9 +62,13 @@ interface SidebarProps {
 export function Sidebar({ isOpen = true, onClose, collapsed = false }: SidebarProps) {
   const { logout, user } = useAuthStore();
   const { logo, miniLogo, nomeEmpresa } = useEmpresaStore();
+  const { cargos, setores } = useCargosSetoresStore();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   
+  const cargoNome = cargos.find(c => c.id === user?.cargoId)?.nome;
+  const setorNome = setores.find(s => s.id === user?.setorId)?.nome;
+  const allowedPaths = getAllowedPaths(user, cargoNome, setorNome);
   
   const isGestor = user?.role === 'admin' || user?.role === 'gestor';
   const isAdmin = user?.role === 'admin';
@@ -172,18 +180,7 @@ export function Sidebar({ isOpen = true, onClose, collapsed = false }: SidebarPr
           </div>
 
           <nav className={`flex-1 px-3 ${collapsed ? 'space-y-1' : 'p-4 space-y-2'} transition-all`} data-tour="menu">
-            {navItems.filter((item) => {
-              // Visitantes: apenas Dashboard e Mural
-              if (isVisitante) {
-                return item.path === '/dashboard' || item.path === '/mural';
-              }
-              // Clientes: Dashboard, Clientes (seus dados), Chat, Feedbacks
-              if (isCliente) {
-                return ['/dashboard', '/clientes', '/chat', '/feedbacks'].includes(item.path);
-              }
-              // Colaboradores, Gestores, Admins: todos os itens
-              return true;
-            }).map((item) => {
+            {navItems.filter((item) => allowedPaths.includes(item.path)).map((item) => {
               const getTourAttr = () => {
                 if (item.path === '/ponto') return 'ponto';
                 if (item.path === '/solicitacoes') return 'solicitacoes';

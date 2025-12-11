@@ -19,6 +19,7 @@ const mockUser: User = {
   avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Joao',
   cargoId: '3', // Gerente de Projetos
   setorId: '1', // Tecnologia
+  regime: 'CLT',
 };
 
 export const useAuthStore = create<AuthState>()(

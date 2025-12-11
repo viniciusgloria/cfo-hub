@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { FolhaPagamento, ColaboradorCompleto, NotaFiscal } from '../types';
-import { useColaboradoresStore } from './colaboradoresStore';
+import { useBeneficiosStore } from './beneficiosStore';
 
 interface FolhaPagamentoState {
   folhas: FolhaPagamento[];
@@ -80,21 +80,40 @@ const mockColaboradores: ColaboradorCompleto[] = [
 
 const gerarFolhasMock = (): FolhaPagamento[] => {
   const periodo = new Date().toISOString().slice(0, 7); // "2025-11"
-  return mockColaboradores.map((colab, idx) => ({
-    id: `fp-${idx + 1}`,
-    colaboradorId: colab.id,
-    colaborador: colab,
-    periodo,
-    valor: colab.contrato === 'CLT' ? 5000 : 8000,
-    adicional: colab.contrato === 'CLT' ? 500 : 0,
-    reembolso: 200,
-    desconto: colab.contrato === 'CLT' ? 800 : 0,
-    valorTotal: colab.contrato === 'CLT' ? 4900 : 8200,
-    situacao: 'pendente',
-    valorTotalSemReembolso: colab.contrato === 'CLT' ? 4700 : 8000,
-    criadoEm: new Date().toISOString(),
-    atualizadoEm: new Date().toISOString(),
-  }));
+  return mockColaboradores.map((colab, idx) => {
+    // Tentar obter custo de benefícios
+    let beneficios = 0;
+    try {
+      const store = useBeneficiosStore.getState();
+      beneficios = store.getCustoTotalColaborador(String(colab.id));
+    } catch (e) {
+      // Store de benefícios ainda não inicializado
+    }
+    
+    const valor = colab.contrato === 'CLT' ? 5000 : 8000;
+    const adicional = colab.contrato === 'CLT' ? 500 : 0;
+    const reembolso = 200;
+    const desconto = colab.contrato === 'CLT' ? 800 : 0;
+    const valorTotal = valor + adicional + reembolso + beneficios - desconto;
+    const valorTotalSemReembolso = valorTotal - reembolso;
+    
+    return {
+      id: `fp-${idx + 1}`,
+      colaboradorId: colab.id,
+      colaborador: colab,
+      periodo,
+      valor,
+      adicional,
+      reembolso,
+      desconto,
+      beneficios,
+      valorTotal,
+      situacao: 'pendente',
+      valorTotalSemReembolso,
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+    };
+  });
 };
 
 export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
@@ -142,10 +161,20 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
         set((state) => ({
           folhas: state.folhas.map((f) => {
             if (f.id === id) {
-              const valorTotal = f.valor + f.adicional + f.reembolso - f.desconto;
+              // Obter custo de benefícios do store
+              let beneficios = f.beneficios || 0;
+              try {
+                const store = useBeneficiosStore.getState();
+                beneficios = store.getCustoTotalColaborador(String(f.colaboradorId));
+              } catch (e) {
+                console.warn('Não foi possível carregar benefícios:', e);
+              }
+              
+              const valorTotal = f.valor + f.adicional + f.reembolso + beneficios - f.desconto;
               const valorTotalSemReembolso = valorTotal - f.reembolso;
               return {
                 ...f,
+                beneficios,
                 valorTotal,
                 valorTotalSemReembolso,
                 atualizadoEm: new Date().toISOString(),
@@ -244,6 +273,15 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
                 obs: (colab as any).obs,
               };
 
+              // Obter custo de benefícios para o colaborador
+              let beneficios = 0;
+              try {
+                const store = useBeneficiosStore.getState();
+                beneficios = store.getCustoTotalColaborador(String(colab.id));
+              } catch (e) {
+                console.warn('Não foi possível carregar benefícios:', e);
+              }
+
               return {
                 id: `fp-${periodo}-${colab.id}`,
                 colaboradorId: colab.id,
@@ -253,9 +291,10 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
                 adicional: 0,
                 reembolso: 0,
                 desconto: 0,
-                valorTotal: 0,
+                beneficios,
+                valorTotal: beneficios, // Inicialmente só benefícios
                 situacao: 'pendente',
-                valorTotalSemReembolso: 0,
+                valorTotalSemReembolso: beneficios,
                 criadoEm: new Date().toISOString(),
                 atualizadoEm: new Date().toISOString(),
               };
@@ -459,6 +498,7 @@ export const useFolhaPagamentoStore = create<FolhaPagamentoState>()(
             adicional,
             reembolso,
             desconto,
+            beneficios: 0, // Será calculado posteriormente
             valorTotal,
             situacao: linha.situacao || 'pendente',
             valorTotalSemReembolso,

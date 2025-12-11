@@ -43,6 +43,7 @@ export interface User {
   cargoId?: string; // ID do cargo
   setorId?: string; // ID do setor
   clienteId?: number; // ID do cliente vinculado (para role cliente)
+  regime?: 'CLT' | 'PJ'; // Regime de contratação (para colaboradores)
 }
 
 export interface NavItem {
@@ -146,6 +147,7 @@ export interface FolhaPagamento {
   adicional: number;
   reembolso: number;
   desconto: number;
+  beneficios: number; // custo total de benefícios do colaborador
   valorTotal: number; // calculado automaticamente
   
   // Status e pagamento
@@ -292,4 +294,161 @@ export interface FolhaCliente {
   atualizadoEm: string;
   criadoPor?: string;
   atualizadoPor?: string;
+}
+
+// ===== BENEFÍCIOS =====
+
+export type TipoBeneficio = 'alimentacao' | 'refeicao' | 'transporte' | 'saude' | 'odontologico' | 'academia' | 'seguro_vida' | 'vale_cultura' | 'auxilio_creche' | 'outros';
+
+export type FornecedorBeneficio = 'alelo' | 'sodexo' | 'vr' | 'ticket' | 'flash' | 'ben' | 'caju' | 'swile' | 'ifood' | 'pluxee' | 'manual';
+
+export interface FornecedorConfig {
+  fornecedor: FornecedorBeneficio;
+  nome: string;
+  apiKey?: string;
+  apiSecret?: string;
+  clientId?: string;
+  integracaoAtiva: boolean;
+  ultimaSincronizacao?: string;
+  configuracoes?: Record<string, any>;
+}
+
+export interface Beneficio {
+  id: string;
+  tipo: TipoBeneficio;
+  nome: string;
+  descricao?: string;
+  fornecedor: FornecedorBeneficio;
+  
+  // Valores e configurações
+  valorEmpresa: number; // quanto a empresa paga
+  valorColaborador: number; // desconto do colaborador
+  valorTotal: number; // valor total do benefício
+  taxaAdministracao?: number; // taxa do fornecedor
+  
+  // Regras de elegibilidade
+  obrigatorio: boolean;
+  aplicavelTodos: boolean; // se aplica a todos os colaboradores
+  cargosElegiveis?: string[]; // IDs dos cargos elegíveis
+  setoresElegiveis?: string[]; // IDs dos setores elegíveis
+  regimeElegivel?: ('CLT' | 'PJ')[]; // regimes elegíveis
+  
+  // Status
+  ativo: boolean;
+  dataInicio: string;
+  dataFim?: string;
+  
+  // Integração
+  integracaoConfig?: {
+    fornecedorId?: string; // ID na plataforma do fornecedor
+    sincronizacaoAutomatica: boolean;
+    ultimaSincronizacao?: string;
+    erroIntegracao?: string;
+  };
+  
+  // Metadados
+  criadoEm: string;
+  atualizadoEm: string;
+  criadoPor?: string;
+  atualizadoPor?: string;
+}
+
+export interface BeneficioColaborador {
+  id: string;
+  beneficioId: string;
+  colaboradorId: string;
+  
+  // Status
+  status: 'ativo' | 'inativo' | 'suspenso' | 'cancelado';
+  dataAdesao: string;
+  dataCancelamento?: string;
+  motivoCancelamento?: string;
+  
+  // Valores personalizados (se diferentes do padrão)
+  valorEmpresaCustom?: number;
+  valorColaboradorCustom?: number;
+  
+  // Dados de integração
+  numeroCartao?: string;
+  fornecedorId?: string; // ID do colaborador no sistema do fornecedor
+  ultimaRecarga?: string;
+  proximaRecarga?: string;
+  
+  // Metadados
+  criadoEm: string;
+  atualizadoEm: string;
+  criadoPor?: string;
+  atualizadoPor?: string;
+}
+
+export interface TransacaoBeneficio {
+  id: string;
+  beneficioColaboradorId: string;
+  beneficioId: string;
+  colaboradorId: string;
+  
+  // Transação
+  tipo: 'recarga' | 'estorno' | 'ajuste' | 'cancelamento';
+  valor: number;
+  data: string;
+  descricao?: string;
+  
+  // Status
+  status: 'pendente' | 'processando' | 'concluido' | 'falhou' | 'cancelado';
+  erroMsg?: string;
+  
+  // Integração
+  fornecedorTransacaoId?: string;
+  sincronizado: boolean;
+  
+  // Metadados
+  criadoEm: string;
+  criadoPor?: string;
+}
+
+export interface MetricasBeneficios {
+  // Totais gerais
+  totalBeneficios: number;
+  beneficiosAtivos: number;
+  totalColaboradoresComBeneficios: number;
+  
+  // Custos mensais
+  custoTotalMensal: number;
+  custoEmpresaMensal: number;
+  custoColaboradorMensal: number;
+  
+  // Por tipo
+  custosPorTipo: {
+    tipo: TipoBeneficio;
+    nome: string;
+    totalColaboradores: number;
+    custoTotal: number;
+    custoEmpresa: number;
+    custoColaborador: number;
+  }[];
+  
+  // Por fornecedor
+  custosPorFornecedor: {
+    fornecedor: FornecedorBeneficio;
+    nome: string;
+    totalBeneficios: number;
+    totalColaboradores: number;
+    custoTotal: number;
+  }[];
+  
+  // Adesão
+  taxaAdesao: number; // % de colaboradores com pelo menos 1 benefício
+  beneficioMaisUtilizado: {
+    nome: string;
+    tipo: TipoBeneficio;
+    totalColaboradores: number;
+  } | null;
+  
+  // Tendências (últimos 6 meses)
+  evolucaoCustos: {
+    mes: string;
+    custoTotal: number;
+    custoEmpresa: number;
+    custoColaborador: number;
+  }[];
 }

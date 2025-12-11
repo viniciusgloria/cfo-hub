@@ -352,5 +352,46 @@ Para dúvidas ou issues, consulte a documentação técnica ou abra um ticket no
 
 ---
 
+## Melhorias no Cadastro de Usuários
+
+### Campos Condicionais PJ/CLT
+- **Meta de Horas Mensais**: Campo obrigatório apenas para CLT, opcional para PJ
+- **CNPJ**: Obrigatório quando contrato é PJ
+- **Validações específicas**: Ajustadas conforme tipo de contratação
+
+### Navegação Adaptada
+- **Ocultação de Ponto**: Usuários PJ não veem a página "Ponto" no menu lateral
+- **Interface personalizada**: Experiência adequada ao tipo de colaborador
+
+### Integração com Login
+- **Regime no User**: Campo `regime` incluído na interface `User` para controle de permissões
+- **Sincronização automática**: Regime atualizado automaticamente no cadastro
+
+---
+
+## Sistema de Permissões Granular
+
+### Arquitetura
+- **Arquivo**: `src/utils/permissions.ts`
+- **Função**: `getAllowedPaths(user, cargoNome, setorNome)`
+- **Lógica**: Controle baseado em role + setor + cargo
+
+### Regras de Acesso
+- **Admins**: Todas as páginas
+- **Gestores**: Todas exceto configurações empresa
+- **Colaboradores**:
+  - Base: Dashboard, Mural, Calendário, Chat, Documentos, Feedbacks, Solicitações
+  - + Ponto (se CLT)
+  - + Gestão (se cargo "Gerente" ou setor TI/RH)
+- **Clientes**: Dashboard, Clientes (próprios), Chat, Feedbacks
+- **Visitantes**: Dashboard, Mural
+
+### Implementação no Sidebar
+- **Uso de stores**: `useAuthStore`, `useCargosSetoresStore`
+- **Filtro dinâmico**: Menu lateral adaptado em tempo real
+- **Performance**: Cálculo otimizado sem re-renders desnecessários
+
+---
+
 **Última atualização**: 2024
 **Versão**: 2.0 (com flexibilidade para casos atípicos)

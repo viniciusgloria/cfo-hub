@@ -5,6 +5,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useColaboradoresStore } from '../store/colaboradoresStore';
+import { useBeneficiosStore } from '../store/beneficiosStore';
 
 
 interface NovaFolhaModalProps {
@@ -15,8 +16,9 @@ interface NovaFolhaModalProps {
 }
 
 export function NovaFolhaModal({ isOpen, onClose, onSave, periodo }: NovaFolhaModalProps) {
-  const colaboradores = useColaboradoresStore((state) => state.colaboradores);
-  const colaboradoresAtivos = colaboradores.filter(c => c.status === 'ativo');
+  const colaboradores = useColaboradoresStore((state: any) => state.colaboradores);
+  const colaboradoresAtivos = colaboradores.filter((c: any) => c.status === 'ativo');
+  const { getCustoTotalColaborador } = useBeneficiosStore();
 
   const [formData, setFormData] = useState({
     colaboradorId: '',
@@ -38,10 +40,11 @@ export function NovaFolhaModal({ isOpen, onClose, onSave, periodo }: NovaFolhaMo
 
   const [empresas, setEmpresas] = useState<Array<{ name: string; percent: number }>>([]);
 
-  const colaboradorSelecionado = colaboradoresAtivos.find(c => String(c.id) === formData.colaboradorId);
+  const colaboradorSelecionado = colaboradoresAtivos.find((c: any) => String(c.id) === formData.colaboradorId);
   const isPJ = colaboradorSelecionado?.contrato === 'PJ';
+  const beneficios = colaboradorSelecionado ? getCustoTotalColaborador(String(colaboradorSelecionado.id)) : 0;
 
-  const valorTotal = formData.valor + formData.adicional + formData.reembolso - formData.desconto;
+  const valorTotal = formData.valor + formData.adicional + formData.reembolso + beneficios - formData.desconto;
   const valorTotalSemReembolso = valorTotal - formData.reembolso;
 
   const formatCurrency = (value: number) => {
@@ -68,6 +71,7 @@ export function NovaFolhaModal({ isOpen, onClose, onSave, periodo }: NovaFolhaMo
       adicional: formData.adicional,
       reembolso: formData.reembolso,
       desconto: formData.desconto,
+      beneficios,
       valorTotal,
       valorTotalSemReembolso,
       situacao: formData.situacao,
@@ -157,7 +161,7 @@ export function NovaFolhaModal({ isOpen, onClose, onSave, periodo }: NovaFolhaMo
               required
             >
               <option value="">Selecione...</option>
-              {colaboradoresAtivos.map(colaborador => (
+              {colaboradoresAtivos.map((colaborador: any) => (
                 <option key={colaborador.id} value={String(colaborador.id)}>
                   {colaborador.nomeCompleto || colaborador.nome}
                   {colaborador.funcao ? ` - ${colaborador.funcao}` : ''}
@@ -257,6 +261,24 @@ export function NovaFolhaModal({ isOpen, onClose, onSave, periodo }: NovaFolhaMo
               />
             </div>
           </div>
+          
+          {/* Benefícios (calculado automaticamente) */}
+          {colaboradorSelecionado && beneficios > 0 && (
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-medium text-blue-900 dark:text-blue-200">Benefícios</span>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    Calculado automaticamente com base nos benefícios vinculados
+                  </p>
+                </div>
+                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(beneficios)}
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="flex justify-between">

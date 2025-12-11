@@ -65,6 +65,16 @@ Empresas 10-50 pessoas precisam:
 - Interagir no mural
 **Pain point:** "Demora 2 semanas pra aprovar uma solicitação"
 
+### Persona 4: Colaborador PJ
+**Nome:** Ana, 32 anos, Consultora
+**Objetivo:** Focar no trabalho sem burocracias desnecessárias
+**Usa para:**
+- Solicitar materiais/reembolsos
+- Interagir no mural e feedbacks
+- Acompanhar projetos e OKRs
+- Comunicação com equipe
+**Pain point:** "Não preciso controlar ponto, mas as ferramentas misturam tudo"
+
 ---
 
 ## 3. FUNCIONALIDADES
@@ -78,6 +88,8 @@ Empresas 10-50 pessoas precisam:
 
 #### Core
 [x] Login hierarquizado (Admin/Gestor/Colaborador)
+[x] Sistema de permissões granular (role + setor + cargo)
+[x] Navegação adaptada por permissões (PJ sem Ponto, gestores com gestão)
 [x] Convite por email (cadastro fechado)
 [x] Dashboard personalizado por role
 [x] Cabeçalho na Dashboard igual ao modelo Colaboradores, com botões 'Tour Guiado' e 'Personalizar' no topo
@@ -100,6 +112,17 @@ Empresas 10-50 pessoas precisam:
 - [x] Solicitação de ajuste
 - [x] Geolocalização opcional
 - [x] Exportar para folha (CSV)
+- [x] Oculto para colaboradores PJ (não aplicável)
+
+#### Sistema de Permissões
+- [x] Controle de acesso baseado em role + setor + cargo
+- [x] Admins: acesso total
+- [x] Gestores: todas as páginas exceto configurações empresa
+- [x] Colaboradores CLT: páginas básicas + Ponto
+- [x] Colaboradores PJ: páginas básicas sem Ponto
+- [x] Colaboradores com cargo "Gerente" ou setor TI/RH: acesso adicional a gestão
+- [x] Clientes: Dashboard, Clientes (próprios), Chat, Feedbacks
+- [x] Visitantes: Dashboard, Mural
 
 #### Solicitações & Aprovações
 - [x] Tipos: Material, Sala, Reembolso, Férias, Home Office
@@ -142,6 +165,9 @@ Empresas 10-50 pessoas precisam:
 - [x] Perfil com tabs (Dados/Docs/Férias/Ponto)
 - [x] Busca e filtros
 - [x] Organograma visual
+- [x] Cadastro com campos condicionais (PJ/CLT)
+  - PJ: Meta de horas opcional, CNPJ obrigatório
+  - Navegação adaptada (sem Ponto para PJ)
 - [ ] Admissão digital
 - [ ] Upload documentos
 

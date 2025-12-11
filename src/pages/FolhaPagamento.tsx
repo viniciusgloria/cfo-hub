@@ -88,7 +88,7 @@ export default function FolhaPagamentoPage() {
   const [colunas, setColunas] = useState<string[]>(() => {
     const saved = localStorage.getItem('folha_colunas');
     return saved ? JSON.parse(saved) : [
-      'funcao', 'empresa', 'contrato', 'valor', 'adicional', 'reembolso', 'desconto', 'total', 'valorTotalSemReembolso', 'situacao', 'dataPagamento'
+      'funcao', 'empresa', 'contrato', 'valor', 'adicional', 'reembolso', 'desconto', 'beneficios', 'total', 'valorTotalSemReembolso', 'situacao', 'dataPagamento'
     ];
   });
   const [modalPersonalizar, setModalPersonalizar] = useState(false);
@@ -146,7 +146,7 @@ export default function FolhaPagamentoPage() {
   };
 
   const handleSalvarNovaFolha = (dados: any) => {
-    const colaborador = colaboradores.find(c => String(c.id) === dados.colaboradorId);
+    const colaborador = colaboradores.find((c: any) => String(c.id) === dados.colaboradorId);
     if (!colaborador) return;
 
     const colaboradorCompleto = {
@@ -330,7 +330,7 @@ export default function FolhaPagamentoPage() {
     // Get fresh list of colaboradores from store (in case new ones were added)
     const colaboradoresAtualizados = useColaboradoresStore.getState().colaboradores;
     console.log('🔍 INÍCIO DO PROCESSAMENTO - Colaboradores disponíveis:', colaboradoresAtualizados.length);
-    console.log('📋 Lista:', colaboradoresAtualizados.map(c => ({ id: c.id, nome: c.nomeCompleto || c.nome, cpf: c.cpf })));
+    console.log('📋 Lista:', colaboradoresAtualizados.map((c: any) => ({ id: c.id, nome: c.nomeCompleto || c.nome, cpf: c.cpf })));
     
     if (!aoa || aoa.length === 0) {
       toast.error('Arquivo vazio ou inválido');
@@ -441,7 +441,7 @@ export default function FolhaPagamentoPage() {
       if (row.colaborador) {
         const target = strip(row.colaborador);
         if (target.length >= 5) {  // Nome deve ter pelo menos 5 caracteres para ser confiável
-          const exactByName = colaboradoresAtualizados.find(c => {
+          const exactByName = colaboradoresAtualizados.find((c: any) => {
             const colaboradorNome = strip(c.nomeCompleto || c.nome);
             return colaboradorNome === target;
           });
@@ -499,7 +499,7 @@ export default function FolhaPagamentoPage() {
       if (row.colaborador) {
         const target = strip(row.colaborador);
         if (target.length >= 3) {
-          const exactByName = colaboradoresAtualizados.find(c => strip(c.nomeCompleto || c.nome) === target);
+          const exactByName = colaboradoresAtualizados.find((c: any) => strip(c.nomeCompleto || c.nome) === target);
           if (exactByName) suggested = exactByName.id;
         }
       }
@@ -1021,6 +1021,15 @@ export default function FolhaPagamentoPage() {
                       </th>
                     </Tooltip>
                   )}
+                  {colunas.includes('beneficios') && (
+                    <Tooltip content="Custo total de benefícios (calculado automaticamente)">
+                      <th
+                        className="text-right py-3 px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 sticky top-0 bg-white dark:bg-gray-900 z-10 min-w-[110px]"
+                      >
+                        Benefícios
+                      </th>
+                    </Tooltip>
+                  )}
                   {colunas.includes('total') && (
                     <Tooltip content="Valor Total">
                       <th
@@ -1116,6 +1125,7 @@ export default function FolhaPagamentoPage() {
                     {colunas.includes('adicional') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[120px]">{formatCurrency(folha.adicional)}</td>}
                     {colunas.includes('reembolso') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[120px]">{formatCurrency(folha.reembolso)}</td>}
                     {colunas.includes('desconto') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[120px]">{formatCurrency(folha.desconto)}</td>}
+                    {colunas.includes('beneficios') && <td className="py-3 px-4 text-right font-medium text-emerald-600 dark:text-emerald-400 min-w-[120px]">{formatCurrency(folha.beneficios || 0)}</td>}
                     {colunas.includes('total') && <td className="py-3 px-4 text-right font-semibold text-gray-900 dark:text-white min-w-[140px]">{formatCurrency(folha.valorTotal)}</td>}
                     {colunas.includes('valorTotalSemReembolso') && <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 min-w-[140px]">{formatCurrency(folha.valorTotalSemReembolso)}</td>}
                     {colunas.includes('empresa1') && (
@@ -1385,7 +1395,7 @@ export default function FolhaPagamentoPage() {
               let rowData: any;
               
               if (sel && sel !== 'new') {
-                const found = colaboradores.find(c => String(c.id) === String(sel));
+                const found = colaboradores.find((c: any) => String(c.id) === String(sel));
                 if (found) {
                   rowData = {
                     ...r.raw,

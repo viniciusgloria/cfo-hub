@@ -70,7 +70,8 @@ export function EditarFolhaModal({ folha, onClose, onSave, onDelete }: EditarFol
     e.preventDefault();
     if (!folha) return;
 
-    const valorTotal = formData.valor + formData.adicional + formData.reembolso - formData.desconto;
+    const beneficios = folha.beneficios || 0;
+    const valorTotal = formData.valor + formData.adicional + formData.reembolso + beneficios - formData.desconto;
     const valorTotalSemReembolso = valorTotal - formData.reembolso;
 
     const totalPercent = empresas.reduce((s, c) => s + (c.percent || 0), 0);
@@ -120,7 +121,7 @@ export function EditarFolhaModal({ folha, onClose, onSave, onDelete }: EditarFol
     }).format(value);
   };
 
-  const valorTotal = formData.valor + formData.adicional + formData.reembolso - formData.desconto;
+  const valorTotal = formData.valor + formData.adicional + formData.reembolso + (folha?.beneficios || 0) - formData.desconto;
   const empresasTotalPercent = empresas.reduce((s, c) => s + (c.percent || 0), 0);
 
   if (!folha) return null;
@@ -228,6 +229,21 @@ export function EditarFolhaModal({ folha, onClose, onSave, onDelete }: EditarFol
                   setFormData({ ...formData, desconto: parseFloat(e.target.value) || 0 })
                 }
               />
+            </div>
+          </div>
+
+          {/* Benefícios (calculado automaticamente) */}
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="font-medium text-blue-900 dark:text-blue-200">Benefícios</span>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  Calculado automaticamente com base nos benefícios vinculados
+                </p>
+              </div>
+              <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                {formatCurrency(folha.beneficios || 0)}
+              </span>
             </div>
           </div>
 

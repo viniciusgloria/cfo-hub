@@ -20,6 +20,7 @@ import { Avaliacoes } from './pages/Avaliacoes';
 import FolhaPagamento from './pages/FolhaPagamento';
 import FolhaClientes from './pages/FolhaClientes';
 import { Documentos } from './pages/Documentos';
+import Beneficios from './pages/Beneficios';
 import { NavigationProgress } from './components/ui/NavigationProgress';
 import { GuidedTour } from './components/GuidedTour';
 import { useThemeStore } from './store/themeStore';
@@ -68,6 +69,7 @@ function App() {
           <Route path="/folha-pagamento" element={<FolhaPagamento />} />
           <Route path="/folha-clientes" element={<FolhaClientes />} />
           <Route path="/documentos" element={<Documentos />} />
+          <Route path="/beneficios" element={<Beneficios />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
